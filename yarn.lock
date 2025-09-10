@@ -343,6 +343,11 @@
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-1.0.8.tgz#958b91c991b1867ced318bedea0e215ee050726e"
   integrity sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==
 
+"@types/stats.js@^0.17.4":
+  version "0.17.4"
+  resolved "https://registry.yarnpkg.com/@types/stats.js/-/stats.js-0.17.4.tgz#1933e5ff153a23c7664487833198d685c22e791e"
+  integrity sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA==
+
 "@types/trusted-types@^2.0.2":
   version "2.0.7"
   resolved "https://registry.yarnpkg.com/@types/trusted-types/-/trusted-types-2.0.7.tgz#baccb07a970b91707df3a3e8ba6896c57ead2d11"
@@ -848,7 +853,7 @@ vue@^3.5.18:
     "@vue/server-renderer" "3.5.21"
     "@vue/shared" "3.5.21"
 
-web-ifc@^0.0.71:
+web-ifc@0.0.71:
   version "0.0.71"
   resolved "https://registry.yarnpkg.com/web-ifc/-/web-ifc-0.0.71.tgz#d274e93618c63334ce11dba223ba1430fe4b68ac"
   integrity sha512-T2DCLthJpEm/kEVo8QGD6KTZjDhsbGkoVJI2mdcngjW5G9dvzZtJ0rtvCVOpr5Bge1Fd0fSYoO/R/6V10xbeVQ==
