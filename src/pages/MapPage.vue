@@ -1,20 +1,50 @@
 <script setup lang="ts">
+import { ref } from "vue";
 import MapViewer from "@/components/MapViewer.vue";
+import type { MapViewerConfig } from "@/types/ifc-viewer";
 
-const modelUrl =
-  "https://thatopen.github.io/engine_components/resources/ifc/school_str.ifc";
-const wasmVersion = "0.0.71";
+/** Собираем один объект конфигурации (каждое поле подписано в типах) */
+const config: MapViewerConfig = {
+  model:
+    "https://thatopen.github.io/engine_components/resources/ifc/school_str.ifc", // Источник модели
+  wasm: { version: "0.0.71", absolute: true }, // Версия/путь web-ifc
+  showGrid: true, // Показ сетки
+  gridOffset: 0, // Смещение сетки по Y
+  liftBy: 10.2, // Подъём модели по Y
+  lookAt: { eye: [78, 20, -2.2], target: [26, -4, 25] }, // Стартовый ракурс
+  autoFit: false, // Автокадр по сцене
+  showStats: false, // FPS панель
+  background: "#0e0e11", // Цвет фона
+};
+
+const viewerRef = ref<InstanceType<typeof MapViewer> | null>(null);
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file || !viewerRef.value) return;
+
+  viewerRef.value.clear();
+  viewerRef.value.loadModel(file).catch(console.error);
+
+  // Важно: позволяет повторно выбрать тот же файл
+  input.value = "";
+}
 </script>
 
 <template>
-  <section class="map-page">
-    <MapViewer :model-url="modelUrl" :web-ifc-version="wasmVersion" />
-  </section>
+  <MapViewer ref="viewerRef" :config="config">
+    <div
+      style="
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        z-index: 2;
+        display: flex;
+        gap: 8px;
+      "
+    >
+      <input type="file" accept=".ifc" @change="onFileChange" />
+    </div>
+  </MapViewer>
 </template>
-
-<style scoped lang="scss">
-.map-page {
-  position: relative;
-  height: 100vh;
-}
-</style>
