@@ -3,10 +3,12 @@ import { ref } from "vue";
 import MapViewer from "@/components/MapViewer.vue";
 import type { MapViewerConfig } from "@/types/ifc-viewer";
 
+const modelSchool =
+  "https://thatopen.github.io/engine_components/resources/ifc/school_str.ifc";
+
 /** Собираем один объект конфигурации (каждое поле подписано в типах) */
 const config: MapViewerConfig = {
-  model:
-    "https://thatopen.github.io/engine_components/resources/ifc/school_str.ifc", // Источник модели
+  model: modelSchool, // Источник модели
   wasm: { version: "0.0.71", absolute: true }, // Версия/путь web-ifc
   showGrid: true, // Показ сетки
   gridOffset: 0, // Смещение сетки по Y
