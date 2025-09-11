@@ -45,6 +45,7 @@ async function loadModel(source: ModelSource) {
     liftBy: config.value.liftBy ?? 0,
     autoFit: config.value.autoFit ?? false,
   });
+  await ifc?.groundToGrid(config.gridOffset ?? 0, config.liftBy ?? 0);
 }
 
 function clear() {
@@ -130,6 +131,11 @@ watch(
   (bg) => {
     if (bg && world.value) useBackground(world.value, bg);
   }
+);
+
+watch(
+  () => [config.value.gridOffset, config.value.liftBy] as const,
+  ([y, l]) => ifc?.groundToGrid(y ?? 0, l ?? 0)
 );
 </script>
 
