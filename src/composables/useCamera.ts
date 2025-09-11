@@ -6,8 +6,6 @@ export function useCamera(components: OBC.Components, world: OBC.World) {
     eye: [number, number, number],
     target: [number, number, number]
   ) {
-    if (!world.camera.controls) return;
-
     await world.camera.controls.setLookAt(
       eye[0],
       eye[1],
@@ -22,10 +20,26 @@ export function useCamera(components: OBC.Components, world: OBC.World) {
     const box = new THREE.Box3().setFromObject(object);
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     if (!isFinite(sphere.radius) || sphere.radius === 0) return;
-    if (!world.camera.controls) return;
-
     await world.camera.controls.fitToSphere(sphere, true, { padding });
   }
 
-  return { setLookAt, fitModel } as const;
+  // ⬇️ НОВОЕ: смотрим на (0,0,0), дистанцию берём из bbox загруженных фрагментов
+  async function lookAtOrigin(fallbackDist = 10) {
+    const frags = components.get(OBC.FragmentsManager);
+    const box = new THREE.Box3();
+    for (const m of frags.list.values()) box.expandByObject(m.object);
+
+    // Радиус сцены для подбора комфортной дистанции камеры
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const r =
+      isFinite(sphere.radius) && sphere.radius > 0
+        ? sphere.radius
+        : fallbackDist;
+
+    // Чуть диагональный ракурс, цель — (0,0,0)
+    const k = 1.6;
+    await world.camera.controls.setLookAt(k * r, k * r, k * r, 0, 0, 0);
+  }
+
+  return { setLookAt, fitModel, lookAtOrigin } as const;
 }

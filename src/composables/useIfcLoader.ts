@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as OBC from "@thatopen/components";
-import type { IfcWasmConfig, ModelSource } from "@/types/ifc-viewer";
+import type { IfcWasmConfig, ModelSource, AlignMode } from "@/types/ifc-viewer";
 
 export function useIfcLoader(
   components: OBC.Components,
@@ -156,16 +156,6 @@ export function useIfcLoader(
     }
   }
 
-  /* function groundToGrid(gridY = 0, extraLift = 0) {
-    const frags = components.get(OBC.FragmentsManager);
-    const box = new THREE.Box3();
-    for (const m of frags.list.values()) box.expandByObject(m.object);
-    if (!isFinite(box.min.y)) return;
-    const target = gridY + extraLift; // сетка + опциональный подъём
-    const delta = target - box.min.y; // сколько поднять/опустить
-    for (const m of frags.list.values()) m.object.position.y += delta;
-    frags.core.update(true);
-  } */
   async function groundToGrid(gridY = 0, extraLift = 0) {
     const fragsMgr = components.get(OBC.FragmentsManager);
 
@@ -208,5 +198,52 @@ export function useIfcLoader(
     });
   }
 
-  return { setup, load, clear, groundToGrid } as const;
+  /** Сдвигает все группы так, чтобы X/Z bbox совпали с целями */
+  async function alignHorizontally(
+    targetX = 0,
+    targetZ = 0,
+    mode: AlignMode = "center"
+  ) {
+    const fragsMgr = components.get(OBC.FragmentsManager);
+    const box = await waitForNonEmptyBBox();
+    if (!box) {
+      console.warn("[alignHorizontally] empty bbox");
+      return;
+    }
+
+    // выбираем «репер» по X/Z
+    const refX =
+      mode === "center"
+        ? (box.min.x + box.max.x) / 2
+        : mode === "min"
+        ? box.min.x
+        : box.max.x;
+    const refZ =
+      mode === "center"
+        ? (box.min.z + box.max.z) / 2
+        : mode === "min"
+        ? box.min.z
+        : box.max.z;
+
+    const dx = targetX - refX;
+    const dz = targetZ - refZ;
+
+    console.log("[alignHorizontally]", {
+      mode,
+      refX,
+      refZ,
+      targetX,
+      targetZ,
+      dx,
+      dz,
+    });
+
+    for (const m of fragsMgr.list.values()) {
+      m.object.position.x += dx;
+      m.object.position.z += dz;
+    }
+    fragsMgr.core.update(true);
+  }
+
+  return { setup, load, clear, groundToGrid, alignHorizontally } as const;
 }

@@ -40,3 +40,5 @@ export interface MapViewerConfig {
   /** Цвет фона сцены, например '#0e0e11' */
   background?: string;
 }
+
+export type AlignMode = "center" | "min" | "max";

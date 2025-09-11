@@ -30,6 +30,7 @@ const containerRef = ref<HTMLDivElement | null>(null);
 
 const components = shallowRef<OBC.Components>();
 const world = shallowRef<OBC.World>();
+let cam: ReturnType<typeof useCamera>;
 
 let disposeWorld: (() => void) | undefined;
 let disposeGrid: (() => void) | undefined;
@@ -46,6 +47,10 @@ async function loadModel(source: ModelSource) {
     autoFit: config.value.autoFit ?? false,
   });
   await ifc?.groundToGrid(config.gridOffset ?? 0, config.liftBy ?? 0);
+  // центрируем по XZ в (0, 0); если нужно по левому краю — меняем режим на "min"
+  await ifc.alignHorizontally(0, 0, "center");
+  // камера смотрит ровно на (0,0,0), дистанция по размеру модели
+  await cam.lookAtOrigin();
 }
 
 function clear() {
@@ -54,28 +59,33 @@ function clear() {
 
 defineExpose({ loadModel, clear });
 
-// Life-cycle: init/destroy (no async setup => no Suspense warnings)
+// Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
 onMounted(async () => {
   if (!containerRef.value) return;
 
-  // 1) Create basic world (scene, renderer, camera)
+  // 1) Создаём базовый мир (сцена, рендерер, камера)
   ({
     components: components.value!,
     world: world.value!,
     dispose: disposeWorld,
   } = useWorld(containerRef.value));
 
-  // 2) Camera initial lookAt (if provided)
-  const cam = useCamera(components.value!, world.value!);
+  // 2) Инициализируем камеру (если есть lookAt)
+  cam = useCamera(components.value!, world.value!);
   if (config.value.lookAt) {
     const { eye, target } = config.value.lookAt;
     await cam.setLookAt(eye, target);
   }
+  // const cam = useCamera(components.value!, world.value!);
+  // if (config.value.lookAt) {
+  //   const { eye, target } = config.value.lookAt;
+  //   await cam.setLookAt(eye, target);
+  // }
 
-  // 3) Background color
+  // 3) Цвет фона
   useBackground(world.value!, config.value.background ?? "#0e0e11");
 
-  // 4) Grid (optional)
+  // 4) Сетка (опционально)
   if (config.value.showGrid) {
     disposeGrid = useGrid(
       components.value!,
@@ -84,20 +94,20 @@ onMounted(async () => {
     );
   }
 
-  // 5) Stats (optional)
+  // 5) Статистика (опционально)
   if (config.value.showStats) {
     disposeStats = useStats(world.value!);
   }
 
-  // 6) Fragments manager: worker + hooks to scene
+  // 6) Менеджер фрагментов: воркер + хуки к сцене
   const frags = useFragments(components.value!, world.value!);
   disposeFragments = frags.dispose;
 
-  // 7) IFC Loader (web-ifc wasm path/version)
+  // 7) IFC Loader (путь/версия web-ifc wasm)
   ifc = useIfcLoader(components.value!, frags, config.value.wasm);
   await ifc.setup();
 
-  // 8) Autoload model if provided in props
+  // 8) Загрузка модели, если она указана в пропсах
   if (config.value.model) {
     try {
       await loadModel(config.value.model);
