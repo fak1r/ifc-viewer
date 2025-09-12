@@ -12,7 +12,7 @@ const config: MapViewerConfig = {
   wasm: { version: "0.0.71", absolute: true }, // Версия/путь web-ifc
   showGrid: true, // Показ сетки
   gridOffset: 0, // Смещение сетки по Y
-  liftBy: 10.2, // Подъём модели по Y
+  liftBy: 0, // Подъём модели по Y
   lookAt: { eye: [78, 20, -2.2], target: [26, -4, 25] }, // Стартовый ракурс
   autoFit: false, // Автокадр по сцене
   showStats: false, // FPS панель

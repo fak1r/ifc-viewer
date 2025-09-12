@@ -11,7 +11,7 @@ export function useWorld(container: HTMLElement) {
 
   world.scene = new OBC.SimpleScene(components);
   world.scene.setup();
-  world.scene.three.background = null; // we control via CSS/clearColor
+  world.scene.three.background = null;
 
   world.renderer = new OBC.SimpleRenderer(components, container);
   world.camera = new OBC.OrthoPerspectiveCamera(components);

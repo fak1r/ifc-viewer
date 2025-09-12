@@ -408,7 +408,14 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.50.1.tgz#13f758c97b9fbbac56b6928547a3ff384e7cfb3e"
   integrity sha512-StxAO/8ts62KZVRAm4JZYq9+NqNsV7RvimNK+YM7ry//zebEH6meuugqW/P5OFUCjyQgui+9fUxT6d5NShvMvA==
 
-"@thatopen/components@^3.1.3":
+"@thatopen/components-front@^3.1.7":
+  version "3.1.7"
+  resolved "https://registry.yarnpkg.com/@thatopen/components-front/-/components-front-3.1.7.tgz#2f8066c7d1677be9ea81678f9b56f1372af955b2"
+  integrity sha512-6JSJzKRWoxJAOambnhu8InRFN6D+EoD8AT5RPVpOSQ92psdGkLuuN30bjScUTkKIG7ALpUwUCHMYyGkaWteERQ==
+  dependencies:
+    "@thatopen/components" "~3.1.0"
+
+"@thatopen/components@^3.1.3", "@thatopen/components@~3.1.0":
   version "3.1.3"
   resolved "https://registry.yarnpkg.com/@thatopen/components/-/components-3.1.3.tgz#8af574b79789b08a3324b255b676883e99e05ff6"
   integrity sha512-s6MplURDJkfrMdW61PEEZNMZ8oME9rosvFa/EGvUM8jQgfQ23LiE7sLjVwH9LfPGC+4IDAfygOMM1IrBU/Oefw==

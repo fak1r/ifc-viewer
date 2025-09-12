@@ -1,9 +1,3 @@
-<template>
-  <div ref="containerRef" class="viewer">
-    <slot />
-  </div>
-</template>
-
 <script setup lang="ts">
 import {
   onMounted,
@@ -22,15 +16,28 @@ import { useFragments } from "@/composables/useFragments";
 import { useIfcLoader } from "@/composables/useIfcLoader";
 import { useStats } from "@/composables/useStats";
 import { useBackground } from "@/composables/useBackground";
+import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
+import MeasurePanel from "@/components/MeasurePanel.vue";
 
 const props = defineProps<{ config: MapViewerConfig }>();
 const { config } = toRefs(props);
 
 const containerRef = ref<HTMLDivElement | null>(null);
-
 const components = shallowRef<OBC.Components>();
 const world = shallowRef<OBC.World>();
 let cam: ReturnType<typeof useCamera>;
+
+const {
+  state,
+  setupMeasurement,
+  updateMeasurementOptions,
+  activateMeasurement,
+  start,
+  finish,
+  deleteUnderCursor,
+  clearAll,
+  getValues,
+} = useAreaMeasurement(components, world);
 
 let disposeWorld: (() => void) | undefined;
 let disposeGrid: (() => void) | undefined;
@@ -46,7 +53,10 @@ async function loadModel(source: ModelSource) {
     liftBy: config.value.liftBy ?? 0,
     autoFit: config.value.autoFit ?? false,
   });
-  await ifc?.groundToGrid(config.gridOffset ?? 0, config.liftBy ?? 0);
+  await ifc.groundToGrid(
+    config.value.gridOffset ?? 0,
+    config.value.liftBy ?? 0
+  );
   // центрируем по XZ в (0, 0); если нужно по левому краю — меняем режим на "min"
   await ifc.alignHorizontally(0, 0, "center");
   // камера смотрит ровно на (0,0,0), дистанция по размеру модели
@@ -57,6 +67,11 @@ function clear() {
   ifc?.clear();
 }
 
+function onKeydown(e: KeyboardEvent) {
+  if (e.code === "Enter" || e.code === "NumpadEnter") finish();
+  if (e.code === "Delete" || e.code === "Backspace") deleteUnderCursor();
+}
+
 defineExpose({ loadModel, clear });
 
 // Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
@@ -64,11 +79,15 @@ onMounted(async () => {
   if (!containerRef.value) return;
 
   // 1) Создаём базовый мир (сцена, рендерер, камера)
-  ({
-    components: components.value!,
-    world: world.value!,
-    dispose: disposeWorld,
-  } = useWorld(containerRef.value));
+  const created = useWorld(containerRef.value);
+  components.value = created.components;
+  world.value = created.world;
+  disposeWorld = created.dispose;
+
+  // AreaMeasurement (измерения)
+  setupMeasurement({ enabled: true, visible: true });
+  containerRef.value?.addEventListener("dblclick", start);
+  window.addEventListener("keydown", onKeydown);
 
   // 2) Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!);
@@ -76,11 +95,6 @@ onMounted(async () => {
     const { eye, target } = config.value.lookAt;
     await cam.setLookAt(eye, target);
   }
-  // const cam = useCamera(components.value!, world.value!);
-  // if (config.value.lookAt) {
-  //   const { eye, target } = config.value.lookAt;
-  //   await cam.setLookAt(eye, target);
-  // }
 
   // 3) Цвет фона
   useBackground(world.value!, config.value.background ?? "#0e0e11");
@@ -133,9 +147,11 @@ onBeforeUnmount(() => {
   try {
     disposeWorld?.();
   } catch {}
+
+  containerRef.value?.removeEventListener("dblclick", start);
+  window.removeEventListener("keydown", onKeydown);
 });
 
-// React to prop changes (basic ones)
 watch(
   () => config.value.background,
   (bg) => {
@@ -145,9 +161,29 @@ watch(
 
 watch(
   () => [config.value.gridOffset, config.value.liftBy] as const,
-  ([y, l]) => ifc?.groundToGrid(y ?? 0, l ?? 0)
+  ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0)
 );
 </script>
+
+<template>
+  <div ref="containerRef" class="viewer">
+    <MeasurePanel
+      :state="state"
+      @toggle:enabled="(v) => activateMeasurement(v)"
+      @toggle:visible="(v) => updateMeasurementOptions({ visible: v })"
+      @change:color="(v) => updateMeasurementOptions({ color: v })"
+      @change:mode="(v) => updateMeasurementOptions({ mode: v })"
+      @change:units="(v) => updateMeasurementOptions({ units: v })"
+      @change:rounding="(v) => updateMeasurementOptions({ rounding: v })"
+      @action:start="start"
+      @action:finish="finish"
+      @action:deleteUnderCursor="deleteUnderCursor"
+      @action:clearAll="clearAll"
+      @action:logValues="() => console.log(getValues())"
+    />
+    <slot />
+  </div>
+</template>
 
 <style scoped>
 .viewer {
