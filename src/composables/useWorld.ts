@@ -1,4 +1,5 @@
 import * as OBC from "@thatopen/components";
+import * as OBF from "@thatopen/components-front";
 
 export function useWorld(container: HTMLElement) {
   const components = new OBC.Components();
@@ -13,7 +14,8 @@ export function useWorld(container: HTMLElement) {
   world.scene.setup();
   world.scene.three.background = null;
 
-  world.renderer = new OBC.SimpleRenderer(components, container);
+  // world.renderer = new OBC.SimpleRenderer(components, container);
+  world.renderer = new OBF.PostproductionRenderer(components, container);
   world.camera = new OBC.OrthoPerspectiveCamera(components);
 
   components.init();

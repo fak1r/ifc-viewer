@@ -105,10 +105,12 @@ export function useAreaMeasurement(
   const activateMeasurement = (v = true) =>
     updateMeasurementOptions({ enabled: v });
   const start = () => ensure().create();
-  const finish = () => ensure().endCreation();
-  const deleteUnderCursor = () => ensure().delete();
-  const clearAll = () => ensure().list.clear();
-  const getValues = () => Array.from(ensure().list, (a) => a.value);
+  const finishMeasurement = () => ensure().endCreation();
+  const clearMeasurement = () => ensure().list.clear();
+  /* 
+    получить значения измерений
+    const getValues = () => Array.from(ensure().list, (a) => a.value); 
+  */
 
   return {
     measurer,
@@ -117,9 +119,7 @@ export function useAreaMeasurement(
     updateMeasurementOptions,
     activateMeasurement,
     start,
-    finish,
-    deleteUnderCursor,
-    clearAll,
-    getValues,
+    finishMeasurement,
+    clearMeasurement,
   };
 }

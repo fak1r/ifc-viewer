@@ -33,10 +33,8 @@ const {
   updateMeasurementOptions,
   activateMeasurement,
   start,
-  finish,
-  deleteUnderCursor,
-  clearAll,
-  getValues,
+  finishMeasurement,
+  clearMeasurement,
 } = useAreaMeasurement(components, world);
 
 let disposeWorld: (() => void) | undefined;
@@ -68,8 +66,8 @@ function clear() {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.code === "Enter" || e.code === "NumpadEnter") finish();
-  if (e.code === "Delete" || e.code === "Backspace") deleteUnderCursor();
+  if (e.code === "Enter" || e.code === "NumpadEnter") finishMeasurement();
+  if (e.code === "Delete" || e.code === "Backspace") clearMeasurement();
 }
 
 defineExpose({ loadModel, clear });
@@ -176,10 +174,8 @@ watch(
       @change:units="(v) => updateMeasurementOptions({ units: v })"
       @change:rounding="(v) => updateMeasurementOptions({ rounding: v })"
       @action:start="start"
-      @action:finish="finish"
-      @action:deleteUnderCursor="deleteUnderCursor"
-      @action:clearAll="clearAll"
-      @action:logValues="() => console.log(getValues())"
+      @action:finishMeasurement="finishMeasurement"
+      @action:clearMeasurement="clearMeasurement"
     />
     <slot />
   </div>

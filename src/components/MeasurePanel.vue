@@ -26,10 +26,8 @@ interface Emit {
   (e: "change:units", value: string): void;
   (e: "change:rounding", value: number): void;
   (e: "action:start"): void;
-  (e: "action:finish"): void;
-  (e: "action:deleteUnderCursor"): void;
-  (e: "action:clearAll"): void;
-  (e: "action:logValues"): void;
+  (e: "action:finishMeasurement"): void;
+  (e: "action:clearMeasurement"): void;
 }
 
 const emit = defineEmits<Emit>();
@@ -64,17 +62,11 @@ function onChangeUnits(e: Event) {
 function start() {
   emit("action:start");
 }
-function finish() {
-  emit("action:finish");
+function finishMeasurement() {
+  emit("action:finishMeasurement");
 }
-function deleteUnderCursor() {
-  emit("action:deleteUnderCursor");
-}
-function clearAll() {
-  emit("action:clearAll");
-}
-function logValues() {
-  emit("action:logValues");
+function clearMeasurement() {
+  emit("action:clearMeasurement");
 }
 </script>
 
@@ -129,10 +121,10 @@ function logValues() {
 
     <div class="row">
       <button @click="start">Создать точку (Двойной клик)</button>
-      <button @click="finish">Закончить измерения (Enter)</button>
-      <button @click="deleteUnderCursor">Удалить точку (Del)</button>
-      <button class="danger" @click="clearAll">Удалить все точки</button>
-      <button @click="logValues">Показать результат</button>
+      <button @click="finishMeasurement">Закончить измерения (Enter)</button>
+      <button class="danger" @click="clearMeasurement">
+        Удалить измерения (Del)
+      </button>
     </div>
   </div>
 </template>
@@ -149,7 +141,7 @@ function logValues() {
   border-radius: 14px;
   backdrop-filter: blur(6px);
   min-width: 280px;
-  max-width: 360px;
+  max-width: 400px;
   font-size: 12px;
 }
 
