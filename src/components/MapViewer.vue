@@ -6,6 +6,8 @@ import {
   watch,
   toRefs,
   shallowRef,
+  computed,
+  nextTick,
 } from "vue";
 import * as OBC from "@thatopen/components";
 import type { MapViewerConfig, ModelSource } from "@/types/ifc-viewer";
@@ -28,19 +30,25 @@ let cam: ReturnType<typeof useCamera>;
 
 const {
   state,
-  setupMeasurement,
   updateMeasurementOptions,
   activateMeasurement,
   start,
   finishMeasurement,
   clearMeasurement,
-} = useAreaMeasurement(components, world);
+} = useAreaMeasurement({
+  components,
+  world,
+  container: containerRef,
+});
 
 let disposeWorld: (() => void) | undefined;
 let disposeGrid: (() => void) | undefined;
 let disposeStats: (() => void) | undefined;
 let disposeFragments: (() => void) | undefined;
 let ifc: ReturnType<typeof useIfcLoader> | undefined;
+
+const measureEnabled = computed(() => !!config.value.measure?.enabled);
+const measureReady = computed(() => !!world.value && !!components.value);
 
 async function loadModel(source: ModelSource) {
   if (!ifc) throw new Error("Viewer is not ready yet");
@@ -64,11 +72,6 @@ function clear() {
   ifc?.clear();
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.code === "Enter" || e.code === "NumpadEnter") finishMeasurement();
-  if (e.code === "Delete" || e.code === "Backspace") clearMeasurement();
-}
-
 defineExpose({ loadModel, clear });
 
 // Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
@@ -80,11 +83,6 @@ onMounted(async () => {
   components.value = created.components;
   world.value = created.world;
   disposeWorld = created.dispose;
-
-  // AreaMeasurement (измерения)
-  setupMeasurement({ enabled: true, visible: true });
-  containerRef.value?.addEventListener("dblclick", start);
-  window.addEventListener("keydown", onKeydown);
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!);
@@ -140,8 +138,7 @@ onBeforeUnmount(() => {
     disposeWorld?.();
   } catch {}
 
-  containerRef.value?.removeEventListener("dblclick", start);
-  window.removeEventListener("keydown", onKeydown);
+  activateMeasurement(false);
 });
 
 watch(
@@ -155,10 +152,31 @@ watch(
   () => [config.value.gridOffset, config.value.liftBy] as const,
   ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0)
 );
+
+watch(
+  [measureEnabled, measureReady],
+  async ([enabled, ready]) => {
+    await nextTick();
+
+    if (enabled && ready) {
+      updateMeasurementOptions({
+        color: config.value.measure?.color,
+        units: config.value.measure?.units,
+        rounding: config.value.measure?.rounding,
+        visible: config.value.measure?.visible ?? true,
+      });
+      activateMeasurement(true);
+    } else {
+      activateMeasurement(false);
+    }
+  },
+  { immediate: true, flush: "post" }
+);
 </script>
 
 <template>
   <div ref="containerRef" class="viewer">
+    <!-- v-if="measureEnabled" -->
     <MeasurePanel
       :state="state"
       @toggle:enabled="(v) => activateMeasurement(v)"

@@ -1,7 +1,8 @@
-import { reactive, shallowRef, type Ref } from "vue";
+import { reactive, shallowRef, onBeforeUnmount, type Ref } from "vue";
 import * as THREE from "three";
 import * as OBC from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
+import type { Components, World } from "@thatopen/components";
 
 export interface AreaMeasurementOptions {
   color?: string | number;
@@ -12,13 +13,21 @@ export interface AreaMeasurementOptions {
   rounding?: number;
 }
 
-export function useAreaMeasurement(
-  componentsRef: Ref<OBC.Components | undefined>,
-  worldRef: Ref<OBC.World | undefined>
-) {
+interface AreaMeasurementDeps {
+  components: Ref<Components | null>;
+  world: Ref<World | null>;
+  container: Ref<HTMLElement | null>;
+}
+
+export function useAreaMeasurement(deps: AreaMeasurementDeps) {
+  const componentsRef = deps.components;
+  const worldRef = deps.world;
+  const containerRef = deps.container;
+
   const measurer = shallowRef<InstanceType<typeof OBF.AreaMeasurement> | null>(
     null
   );
+  let removeListeners: (() => void) | null = null;
 
   const state = reactive({
     enabled: false,
@@ -102,15 +111,62 @@ export function useAreaMeasurement(
     }
   }
 
-  const activateMeasurement = (v = true) =>
-    updateMeasurementOptions({ enabled: v });
+  function onKeydown(e: KeyboardEvent) {
+    if (e.code === "Enter" || e.code === "NumpadEnter") finishMeasurement();
+    if (e.code === "Delete" || e.code === "Backspace") clearMeasurement();
+  }
+
+  function activateMeasurement(on: boolean) {
+    // выключение инструмента
+    if (!on) {
+      // снимаем слушатели, если были
+      removeListeners?.();
+      removeListeners = null;
+
+      // гасим внутреннее состояние инструмента
+      if (state.enabled) {
+        state.enabled = false;
+      }
+      return;
+    }
+
+    // включение инструмента
+    if (!ensure()) {
+      // мир не готов — просто выходим, watcher в компоненте дернёт повторно позже
+      return;
+    }
+
+    // идемпотентность: если уже включено и слушатели навешаны — выходим
+    if (removeListeners) return;
+
+    // 1) инициализируем инструмент (без глобальных подписок!)
+    setupMeasurement({ enabled: true, visible: true });
+
+    // 2) вешаем слушатели (вместо onMounted в компоненте)
+    const dblTarget: EventTarget = (containerRef.value ??
+      window) as EventTarget;
+    const onDblClick: EventListener = () => start();
+    const onKeyDown: EventListener = (e) => onKeydown(e as KeyboardEvent);
+
+    dblTarget.addEventListener("dblclick", onDblClick);
+    window.addEventListener("keydown", onKeyDown);
+
+    // 3) готовим функцию снятия
+    removeListeners = () => {
+      dblTarget.removeEventListener("dblclick", onDblClick);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+
+    state.enabled = true;
+  }
+
   const start = () => ensure().create();
   const finishMeasurement = () => ensure().endCreation();
   const clearMeasurement = () => ensure().list.clear();
-  /* 
-    получить значения измерений
-    const getValues = () => Array.from(ensure().list, (a) => a.value); 
-  */
+
+  onBeforeUnmount(() => {
+    activateMeasurement(false);
+  });
 
   return {
     measurer,

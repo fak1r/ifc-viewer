@@ -17,6 +17,9 @@ const config: MapViewerConfig = {
   autoFit: false, // Автокадр по сцене
   showStats: false, // FPS панель
   background: "#0e0e11", // Цвет фона
+  measure: {
+    enabled: false,
+  },
 };
 
 const viewerRef = ref<InstanceType<typeof MapViewer> | null>(null);

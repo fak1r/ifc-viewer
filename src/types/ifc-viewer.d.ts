@@ -39,6 +39,21 @@ export interface MapViewerConfig {
   showStats?: boolean;
   /** Цвет фона сцены, например '#0e0e11' */
   background?: string;
+  /** Настройки инструмента измерения площади */
+  measure?: MeasureConfig;
+}
+
+export interface MeasureConfig {
+  /** Включить инструмент измерения площади */
+  enabled?: boolean;
+  /** Показ панели управления (если включён инструмент) */
+  visible?: boolean;
+  /** Цвет заливаемых площадей */
+  color?: string | number;
+  /** Единицы измерения, например 'm²' | 'ft²' */
+  units?: string;
+  /** Округление результата, знаков после запятой */
+  rounding?: number;
 }
 
 export type AlignMode = "center" | "min" | "max";
