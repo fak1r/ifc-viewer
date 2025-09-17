@@ -120,7 +120,7 @@ function clearMeasurement() {
     </div>
 
     <div class="row">
-      <button @click="start">Создать точку (Двойной клик)</button>
+      <div>Создать точку (Двойной клик)</div>
       <button @click="finishMeasurement">Закончить измерения (Enter)</button>
       <button class="danger" @click="clearMeasurement">
         Удалить измерения (Del)

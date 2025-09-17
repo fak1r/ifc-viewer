@@ -168,34 +168,13 @@ export function useIfcLoader(
     const target = gridY + extraLift;
     const delta = target - boxBefore.min.y;
 
-    console.log("[groundToGrid:BEFORE]", {
-      minY: boxBefore.min.y,
-      maxY: boxBefore.max.y,
-      target,
-      delta,
-      groups: fragsMgr.list.size,
-    });
-
     for (const m of fragsMgr.list.values()) {
-      console.log(
-        "[groundToGrid] move",
-        m.object.name ?? "(no-name)",
-        "y:",
-        m.object.position.y,
-        "->",
-        m.object.position.y + delta
-      );
       m.object.position.y += delta;
     }
     fragsMgr.core.update(true);
 
     const boxAfter = new THREE.Box3();
     for (const m of fragsMgr.list.values()) boxAfter.expandByObject(m.object);
-    console.log("[groundToGrid:AFTER]", {
-      minY: boxAfter.min.y,
-      maxY: boxAfter.max.y,
-      target,
-    });
   }
 
   /** Сдвигает все группы так, чтобы X/Z bbox совпали с целями */
@@ -227,16 +206,6 @@ export function useIfcLoader(
 
     const dx = targetX - refX;
     const dz = targetZ - refZ;
-
-    console.log("[alignHorizontally]", {
-      mode,
-      refX,
-      refZ,
-      targetX,
-      targetZ,
-      dx,
-      dz,
-    });
 
     for (const m of fragsMgr.list.values()) {
       m.object.position.x += dx;

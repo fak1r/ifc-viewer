@@ -7,14 +7,13 @@ export function useWorld(container: HTMLElement) {
   const world = worlds.create<
     OBC.SimpleScene,
     OBC.OrthoPerspectiveCamera,
-    OBC.SimpleRenderer
+    OBF.PostproductionRenderer
   >();
 
   world.scene = new OBC.SimpleScene(components);
   world.scene.setup();
   world.scene.three.background = null;
 
-  // world.renderer = new OBC.SimpleRenderer(components, container);
   world.renderer = new OBF.PostproductionRenderer(components, container);
   world.camera = new OBC.OrthoPerspectiveCamera(components);
 

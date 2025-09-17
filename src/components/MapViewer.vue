@@ -14,7 +14,6 @@ import { useCamera } from "@/composables/useCamera";
 import { useGrid } from "@/composables/useGrid";
 import { useFragments } from "@/composables/useFragments";
 import { useIfcLoader } from "@/composables/useIfcLoader";
-import { useStats } from "@/composables/useStats";
 import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
 import MeasurePanel from "@/components/MeasurePanel.vue";
@@ -76,7 +75,7 @@ defineExpose({ loadModel, clear });
 onMounted(async () => {
   if (!containerRef.value) return;
 
-  // 1) Создаём базовый мир (сцена, рендерер, камера)
+  // Создаём базовый мир (сцена, рендерер, камера)
   const created = useWorld(containerRef.value);
   components.value = created.components;
   world.value = created.world;
@@ -87,17 +86,17 @@ onMounted(async () => {
   containerRef.value?.addEventListener("dblclick", start);
   window.addEventListener("keydown", onKeydown);
 
-  // 2) Инициализируем камеру (если есть lookAt)
+  // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!);
   if (config.value.lookAt) {
     const { eye, target } = config.value.lookAt;
     await cam.setLookAt(eye, target);
   }
 
-  // 3) Цвет фона
+  // Цвет фона
   useBackground(world.value!, config.value.background ?? "#0e0e11");
 
-  // 4) Сетка (опционально)
+  // Сетка (опционально)
   if (config.value.showGrid) {
     disposeGrid = useGrid(
       components.value!,
@@ -106,20 +105,15 @@ onMounted(async () => {
     );
   }
 
-  // 5) Статистика (опционально)
-  if (config.value.showStats) {
-    disposeStats = useStats(world.value!);
-  }
-
-  // 6) Менеджер фрагментов: воркер + хуки к сцене
+  // Менеджер фрагментов: воркер + хуки к сцене
   const frags = useFragments(components.value!, world.value!);
   disposeFragments = frags.dispose;
 
-  // 7) IFC Loader (путь/версия web-ifc wasm)
+  // IFC Loader (путь/версия web-ifc wasm)
   ifc = useIfcLoader(components.value!, frags, config.value.wasm);
   await ifc.setup();
 
-  // 8) Загрузка модели, если она указана в пропсах
+  // Загрузка модели, если она указана в пропсах
   if (config.value.model) {
     try {
       await loadModel(config.value.model);
