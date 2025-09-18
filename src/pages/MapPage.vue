@@ -15,7 +15,7 @@ const config: MapViewerConfig = {
   lookAt: { eye: [78, 20, -2.2], target: [26, -4, 25] }, // Стартовый ракурс
   autoFit: false, // Автокадр по сцене
   showStats: false, // FPS панель
-  background: "#0e0e11", // Цвет фона
+  background: "#0e0111", // Цвет фона
   measure: {
     enabled: false,
   },

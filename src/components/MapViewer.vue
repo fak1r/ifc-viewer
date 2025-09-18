@@ -24,8 +24,8 @@ const props = defineProps<{ config: MapViewerConfig }>();
 const { config } = toRefs(props);
 
 const containerRef = ref<HTMLDivElement | null>(null);
-const components = shallowRef<OBC.Components>();
-const world = shallowRef<OBC.World>();
+const components = shallowRef<OBC.Components | null>(null);
+const world = shallowRef<OBC.World | null>(null);
 let cam: ReturnType<typeof useCamera>;
 
 const {

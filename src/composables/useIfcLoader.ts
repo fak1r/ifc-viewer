@@ -2,23 +2,25 @@ import * as THREE from "three";
 import * as OBC from "@thatopen/components";
 import type { IfcWasmConfig, ModelSource, AlignMode } from "@/types/ifc-viewer";
 
+type FragsReadyLike = { ready: Promise<unknown> };
+
 export function useIfcLoader(
   components: OBC.Components,
-  frags: ReturnType<typeof useFragments>,
+  frags: FragsReadyLike,
   wasm?: IfcWasmConfig
 ) {
   const ifcLoader = components.get(OBC.IfcLoader);
 
   function resolveWasmPath(): { path: string; absolute: boolean } {
     if (wasm?.path) {
-      let p = wasm.path;
-      if (!p.endsWith("/")) p += "/";
+      const p = wasm.path.endsWith("/") ? wasm.path : wasm.path + "/";
       return { path: p, absolute: !!wasm.absolute };
     }
     if (wasm?.version) {
-      const abs = wasm.absolute ?? true;
-      let p = `https://unpkg.com/web-ifc@${wasm.version}/`;
-      return { path: p, absolute: abs };
+      return {
+        path: `https://unpkg.com/web-ifc@${wasm.version}/`,
+        absolute: wasm.absolute ?? true,
+      };
     }
     return { path: "https://unpkg.com/web-ifc@0.0.71/", absolute: true };
   }
@@ -26,76 +28,46 @@ export function useIfcLoader(
   async function setup() {
     await frags.ready;
     const { path, absolute } = resolveWasmPath();
-    await ifcLoader.setup({
-      autoSetWasm: false,
-      wasm: { path, absolute },
-    });
-    const webIfcSettings = (ifcLoader as any).settings?.webIfc;
-    if (webIfcSettings) {
-      webIfcSettings.COORDINATE_TO_ORIGIN = true;
-      webIfcSettings.OPTIMIZE_PROFILES = true;
-    }
+    await ifcLoader.setup({ autoSetWasm: false, wasm: { path, absolute } });
   }
 
   async function toUint8Array(source: ModelSource): Promise<Uint8Array> {
     if (typeof source === "string") {
       const res = await fetch(source);
-      const ab = await res.arrayBuffer();
-      return new Uint8Array(ab);
+      return new Uint8Array(await res.arrayBuffer());
     }
     if (source instanceof File) {
-      const ab = await source.arrayBuffer();
-      return new Uint8Array(ab);
+      return new Uint8Array(await source.arrayBuffer());
     }
     if (source instanceof Uint8Array) return source;
     throw new Error("Unsupported model source");
   }
 
-  async function waitForFirstGroup(timeoutMs = 4000) {
-    const fragsMgr = components.get(OBC.FragmentsManager);
-    if (fragsMgr.list.size > 0) return;
-
-    let stop = false;
+  // Универсальный «вейтер» состояния фрагментов
+  async function waitUntil(
+    predicate: () => boolean,
+    timeoutMs = 4000,
+    label = "waitUntil"
+  ) {
     const t0 = performance.now();
-
-    // Быстрый поллинг: ждём, пока list.size > 0
-    while (!stop) {
-      // уже есть?
-      if (fragsMgr.list.size > 0) return;
-
-      // таймаут?
+    while (!predicate()) {
       if (performance.now() - t0 > timeoutMs) {
-        console.warn(
-          "[waitForFirstGroup] timeout, list.size =",
-          fragsMgr.list.size
-        );
-        return;
+        console.warn(`[${label}] timeout`);
+        return false;
       }
-      // следующий кадр
       await new Promise(requestAnimationFrame);
     }
+    return true;
   }
 
-  async function waitForNonEmptyBBox(timeoutMs = 4000) {
-    const fragsMgr = components.get(OBC.FragmentsManager);
-    const t0 = performance.now();
-    const box = new THREE.Box3();
+  function getFragsMgr() {
+    return components.get(OBC.FragmentsManager);
+  }
 
-    while (true) {
-      box.makeEmpty();
-      for (const m of fragsMgr.list.values()) box.expandByObject(m.object);
-
-      if (isFinite(box.min.y)) return box; // ← готов bbox
-
-      if (performance.now() - t0 > timeoutMs) {
-        console.warn(
-          "[waitForNonEmptyBBox] timeout; list.size =",
-          fragsMgr.list.size
-        );
-        return null;
-      }
-      await new Promise(requestAnimationFrame);
-    }
+  function computeBBoxOfAll(): THREE.Box3 {
+    const box = new THREE.Box3().makeEmpty();
+    for (const m of getFragsMgr().list.values()) box.expandByObject(m.object);
+    return box;
   }
 
   async function load(
@@ -107,41 +79,33 @@ export function useIfcLoader(
     await ifcLoader.load(buffer, false, opts?.name ?? "model", {
       processData: {
         progressCallback: (p: number) =>
-          console.log("IFC convert progress:", p),
+          console.log(`Прогресс рендера модели: ${Math.round(p * 100)}%`),
       },
     });
 
-    await waitForFirstGroup();
-    components.get(OBC.FragmentsManager).core.update(true);
+    // дождаться хотя бы одной группы
+    await waitUntil(() => getFragsMgr().list.size > 0, 4000, "firstGroup");
+    getFragsMgr().core.update(true);
 
-    await waitForNonEmptyBBox();
+    // дождаться непустого bbox
+    await waitUntil(
+      () => Number.isFinite(computeBBoxOfAll().min.y),
+      4000,
+      "nonEmptyBBox"
+    );
 
-    // Post-load tweaks per config
-    const list = components.get(OBC.FragmentsManager).list;
-    const [model] = list.values();
+    const [model] = getFragsMgr().list.values();
     if (!model) return;
 
     if ((opts?.liftBy ?? 0) !== 0) {
       model.object.position.y += opts!.liftBy!;
     }
-
-    if (opts?.autoFit) {
-      try {
-        const box = new THREE.Box3().setFromObject(model.object);
-        const sphere = box.getBoundingSphere(new THREE.Sphere());
-        await components
-          .get(OBC.Worlds)
-          .list.get(0)
-          ?.camera.controls.fitToSphere(sphere, true, { padding: 1.2 });
-      } catch {}
-    }
   }
 
   function clear() {
     try {
-      const fragments = components.get(OBC.FragmentsManager);
-      // remove from scene
-      for (const m of fragments.list.values()) {
+      const frags = getFragsMgr();
+      for (const m of frags.list.values()) {
         try {
           m.object.parent?.remove(m.object);
         } catch {}
@@ -149,48 +113,39 @@ export function useIfcLoader(
           m.dispose?.();
         } catch {}
       }
-      fragments.list.clear();
-      fragments.core.update(true);
+      frags.list.clear();
+      frags.core.update(true);
     } catch (e) {
       console.warn("clear() warning:", e);
     }
   }
 
   async function groundToGrid(gridY = 0, extraLift = 0) {
-    const fragsMgr = components.get(OBC.FragmentsManager);
+    await waitUntil(
+      () => Number.isFinite(computeBBoxOfAll().min.y),
+      4000,
+      "groundToGridBBox"
+    );
+    const box = computeBBoxOfAll();
+    const delta = gridY + extraLift - box.min.y;
 
-    const boxBefore = await waitForNonEmptyBBox();
-    if (!boxBefore) {
-      console.warn("[groundToGrid] bbox по-прежнему пустой");
-      return;
-    }
-
-    const target = gridY + extraLift;
-    const delta = target - boxBefore.min.y;
-
-    for (const m of fragsMgr.list.values()) {
-      m.object.position.y += delta;
-    }
-    fragsMgr.core.update(true);
-
-    const boxAfter = new THREE.Box3();
-    for (const m of fragsMgr.list.values()) boxAfter.expandByObject(m.object);
+    const frags = getFragsMgr();
+    for (const m of frags.list.values()) m.object.position.y += delta;
+    frags.core.update(true);
   }
 
-  /** Сдвигает все группы так, чтобы X/Z bbox совпали с целями */
   async function alignHorizontally(
     targetX = 0,
     targetZ = 0,
     mode: AlignMode = "center"
   ) {
-    const fragsMgr = components.get(OBC.FragmentsManager);
-    const box = await waitForNonEmptyBBox();
-    if (!box) {
-      console.warn("[alignHorizontally] empty bbox");
-      return;
-    }
+    await waitUntil(
+      () => Number.isFinite(computeBBoxOfAll().min.y),
+      4000,
+      "alignBBox"
+    );
+    const box = computeBBoxOfAll();
 
-    // выбираем «репер» по X/Z
     const refX =
       mode === "center"
         ? (box.min.x + box.max.x) / 2
@@ -207,11 +162,12 @@ export function useIfcLoader(
     const dx = targetX - refX;
     const dz = targetZ - refZ;
 
-    for (const m of fragsMgr.list.values()) {
+    const frags = getFragsMgr();
+    for (const m of frags.list.values()) {
       m.object.position.x += dx;
       m.object.position.z += dz;
     }
-    fragsMgr.core.update(true);
+    frags.core.update(true);
   }
 
   return { setup, load, clear, groundToGrid, alignHorizontally } as const;
