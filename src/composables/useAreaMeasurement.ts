@@ -1,6 +1,5 @@
 import { reactive, shallowRef, onBeforeUnmount, type Ref } from "vue";
 import * as THREE from "three";
-import * as OBC from "@thatopen/components";
 import * as OBF from "@thatopen/components-front";
 import type { Components, World } from "@thatopen/components";
 
