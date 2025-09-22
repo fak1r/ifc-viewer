@@ -20,7 +20,15 @@ import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
 import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
 
-const props = defineProps<{ config: ModelViewerConfig }>();
+interface Props {
+  config: ModelViewerConfig;
+  measurePanelsVisibility: {
+    square: boolean;
+    linear: boolean;
+  };
+}
+
+const props = defineProps<Props>();
 
 const { config } = toRefs(props);
 
@@ -173,14 +181,24 @@ watch(
   },
   { immediate: true, flush: "post" }
 );
+
+watch(
+  () => props.measurePanelsVisibility.square,
+  (visible) => {
+    if (visible) {
+      activateMeasurement(true);
+    } else {
+      activateMeasurement(false);
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <div ref="containerRef" class="viewer">
-    <!-- v-if="measureEnabled" -->
-    <!-- @toggle:enabled="(v) => activateMeasurement(v)" -->
-    <!-- @toggle:enabled="(v) => emit('update:measureEnabled', v)" -->
     <AreaMeasurePanel
+      v-if="measurePanelsVisibility.square"
       :state="state"
       @toggle:enabled="(v) => activateMeasurement(v)"
       @toggle:visible="(v) => updateMeasurementOptions({ visible: v })"

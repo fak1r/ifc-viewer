@@ -1,26 +1,21 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { reactive, ref } from "vue";
 import ModelViewer from "@/components/ModelViewer.vue";
 import type { ModelViewerConfig } from "@/types/ifc-viewer";
 import SvgIcons from "@/components/Svg/SvgIcons.vue";
 
 const base = import.meta.env.BASE_URL || "/";
 
-/** Собираем один объект конфигурации (каждое поле подписано в типах) */
 const config: ModelViewerConfig = {
-  model: `${location.origin}${base}house-model.ifc`, // Источник модели
-  wasm: { version: "0.0.71", absolute: true }, // Версия/путь web-ifc
-  showGrid: true, // Показ сетки
-  gridOffset: 0, // Смещение сетки по Y
-  liftBy: 0, // Подъём модели по Y
-  lookAt: { eye: [78, 20, -2.2], target: [26, -4, 25] }, // Стартовый ракурс
-  autoFit: false, // Автокадр по сцене
-  showStats: false, // FPS панель
-  background: "#0e0111", // Цвет фона
-  measure: {
-    enabled: false,
-  },
+  model: `${location.origin}${base}house-model.ifc`,
+  showGrid: true,
+  background: "#0e0111",
 };
+
+const measurePanelsVisibility = reactive<{ square: boolean; linear: boolean }>({
+  square: false,
+  linear: false,
+});
 
 const viewerRef = ref<InstanceType<typeof ModelViewer> | null>(null);
 
@@ -36,16 +31,17 @@ function onFileChange(e: Event) {
   input.value = "";
 }
 
-// function toggleActiveMeasure(name) {
-//   switch (name) {
-//     case "ruler":
-//       config.measure.enabled = !config.measure.enabled;
-//   }
-// }
+function toggleVisibleMeasure(name: "square" | "linear") {
+  measurePanelsVisibility[name] = !measurePanelsVisibility[name];
+}
 </script>
 
 <template>
-  <ModelViewer ref="viewerRef" :config="config">
+  <ModelViewer
+    ref="viewerRef"
+    :config="config"
+    :measure-panels-visibility="measurePanelsVisibility"
+  >
     <div class="toolbar">
       <input
         type="file"
@@ -54,8 +50,12 @@ function onFileChange(e: Event) {
         class="toolbar__input"
       />
       <div class="toolbar__icons">
-        <button><SvgIcons icon="ruler" /></button>
-        <button><SvgIcons icon="square-measument" /></button>
+        <button @click="toggleVisibleMeasure('linear')">
+          <SvgIcons icon="linear-measurement" />
+        </button>
+        <button @click="toggleVisibleMeasure('square')">
+          <SvgIcons icon="square-measurement" />
+        </button>
       </div>
     </div>
   </ModelViewer>

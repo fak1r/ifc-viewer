@@ -58,10 +58,6 @@ function onChangeMode(e: Event) {
 function onChangeUnits(e: Event) {
   emit("change:units", (e.target as HTMLSelectElement).value);
 }
-
-function start() {
-  emit("action:start");
-}
 function finishMeasurement() {
   emit("action:finishMeasurement");
 }

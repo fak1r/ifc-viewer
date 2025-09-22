@@ -1,6 +1,6 @@
 <template>
   <svg
-    v-if="icon === 'square-measument'"
+    v-if="icon === 'square-measurement'"
     fill="#ffffff"
     height="30px"
     width="30px"
@@ -34,7 +34,7 @@
   </svg>
 
   <svg
-    v-else-if="icon === 'ruler'"
+    v-else-if="icon === 'linear-measurement'"
     fill="#ffffff"
     height="30px"
     width="30px"
