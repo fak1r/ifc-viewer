@@ -155,11 +155,19 @@ function clearMeasurement() {
 button {
   padding: 6px 10px;
   border-radius: 4px;
-  background-color: #726969;
+  background-color: var(--btn-color);
+
+  &:hover {
+    background-color: var(--btn-hover);
+  }
 }
 
 button.danger {
   background: #9a2b2b;
-  color: #fff;
+  color: white;
+
+  &:hover {
+    background-color: #bd4a4a;
+  }
 }
 </style>

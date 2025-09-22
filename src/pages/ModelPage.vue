@@ -3,6 +3,7 @@ import { reactive, ref } from "vue";
 import ModelViewer from "@/components/ModelViewer.vue";
 import type { ModelViewerConfig } from "@/types/ifc-viewer";
 import SvgIcons from "@/components/Svg/SvgIcons.vue";
+import UploadModelButton from "@/components/UploadModelButton.vue";
 
 const base = import.meta.env.BASE_URL || "/";
 
@@ -19,20 +20,14 @@ const measurePanelsVisibility = reactive<{ square: boolean; linear: boolean }>({
 
 const viewerRef = ref<InstanceType<typeof ModelViewer> | null>(null);
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  if (!file || !viewerRef.value) return;
-
-  viewerRef.value.clear();
-  viewerRef.value.loadModel(file).catch(console.error);
-
-  // Важно: позволяет повторно выбрать тот же файл
-  input.value = "";
-}
-
 function toggleVisibleMeasure(name: "square" | "linear") {
   measurePanelsVisibility[name] = !measurePanelsVisibility[name];
+}
+
+async function handleFile(file: File) {
+  if (!viewerRef.value) return;
+  viewerRef.value.clear();
+  await viewerRef.value.loadModel(file).catch(console.error);
 }
 </script>
 
@@ -43,12 +38,8 @@ function toggleVisibleMeasure(name: "square" | "linear") {
     :measure-panels-visibility="measurePanelsVisibility"
   >
     <div class="toolbar">
-      <input
-        type="file"
-        accept=".ifc"
-        @change="onFileChange"
-        class="toolbar__input"
-      />
+      <UploadModelButton @file-selected="handleFile" />
+
       <div class="toolbar__icons">
         <button @click="toggleVisibleMeasure('linear')">
           <SvgIcons icon="linear-measurement" />
@@ -69,6 +60,7 @@ function toggleVisibleMeasure(name: "square" | "linear") {
   z-index: 2;
   display: flex;
   gap: 8px;
+  align-items: center;
 
   &__input {
     cursor: pointer;
