@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from "vue-router";
 import type { RouteRecordRaw } from "vue-router";
-import MapPage from "@/pages/MapPage.vue";
+import ModelPage from "@/pages/ModelPage.vue";
 
 const routes: RouteRecordRaw[] = [
-  { path: "/map", name: "Map", component: MapPage },
-  { path: "/:pathMatch(.*)*", redirect: "/map" },
+  { path: "/model", name: "Model", component: ModelPage },
+  { path: "/:pathMatch(.*)*", redirect: "/model" },
 ];
 
 export const router = createRouter({

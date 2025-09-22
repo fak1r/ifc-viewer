@@ -10,7 +10,7 @@ import {
   nextTick,
 } from "vue";
 import * as OBC from "@thatopen/components";
-import type { MapViewerConfig, ModelSource } from "@/types/ifc-viewer";
+import type { ModelViewerConfig, ModelSource } from "@/types/ifc-viewer";
 import { useWorld } from "@/composables/useWorld";
 import { useCamera } from "@/composables/useCamera";
 import { useGrid } from "@/composables/useGrid";
@@ -18,9 +18,10 @@ import { useFragments } from "@/composables/useFragments";
 import { useIfcLoader } from "@/composables/useIfcLoader";
 import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
-import MeasurePanel from "@/components/MeasurePanel.vue";
+import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
 
-const props = defineProps<{ config: MapViewerConfig }>();
+const props = defineProps<{ config: ModelViewerConfig }>();
+
 const { config } = toRefs(props);
 
 const containerRef = ref<HTMLDivElement | null>(null);
@@ -177,7 +178,9 @@ watch(
 <template>
   <div ref="containerRef" class="viewer">
     <!-- v-if="measureEnabled" -->
-    <MeasurePanel
+    <!-- @toggle:enabled="(v) => activateMeasurement(v)" -->
+    <!-- @toggle:enabled="(v) => emit('update:measureEnabled', v)" -->
+    <AreaMeasurePanel
       :state="state"
       @toggle:enabled="(v) => activateMeasurement(v)"
       @toggle:visible="(v) => updateMeasurementOptions({ visible: v })"

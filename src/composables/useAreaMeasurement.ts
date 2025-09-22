@@ -123,9 +123,26 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
       removeListeners = null;
 
       // гасим внутреннее состояние инструмента
-      if (state.enabled) {
-        state.enabled = false;
+      try {
+        const m = measurer.value;
+        if (m) {
+          // завершить/отменить активное построение, если было
+          m.endCreation?.();
+          // выключить режим инструмента, чтобы он не держал курсор
+          m.enabled = false;
+          // спрятать визуализацию, если нужно
+          m.visible = false;
+        }
+      } catch {}
+
+      // вернуть обычный курсор контейнеру
+      if (containerRef.value) {
+        containerRef.value.style.cursor = "";
       }
+
+      state.enabled = false;
+      state.visible = false;
+
       return;
     }
 

@@ -19,8 +19,8 @@ export interface CameraLookAt {
   target: [number, number, number];
 }
 
-/** Главное описание конфига MapViewer (всё в одном объекте) */
-export interface MapViewerConfig {
+/** Главное описание конфига ModelViewer (всё в одном объекте) */
+export interface ModelViewerConfig {
   /** Источник модели (URL | File | Uint8Array). Если не задан, можно вызвать .loadModel() вручную */
   model?: ModelSource;
   /** Конфиг web-ifc (.wasm): версия/путь/абсолютность */

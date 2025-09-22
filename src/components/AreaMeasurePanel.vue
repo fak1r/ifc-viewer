@@ -158,9 +158,8 @@ function clearMeasurement() {
 
 button {
   padding: 6px 10px;
-  border-radius: 10px;
-  border: none;
-  cursor: pointer;
+  border-radius: 4px;
+  background-color: #726969;
 }
 
 button.danger {
