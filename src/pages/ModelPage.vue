@@ -4,6 +4,7 @@ import ModelViewer from "@/components/ModelViewer.vue";
 import type { ModelViewerConfig } from "@/types/ifc-viewer";
 import SvgIcons from "@/components/Svg/SvgIcons.vue";
 import UploadModelButton from "@/components/UploadModelButton.vue";
+import LoadProgressBar from "@/components/LoadProgressBar.vue";
 
 const base = import.meta.env.BASE_URL || "/";
 
@@ -37,6 +38,7 @@ async function handleFile(file: File) {
     :config="config"
     :measure-panels-visibility="measurePanelsVisibility"
   >
+    <LoadProgressBar />
     <div class="toolbar">
       <UploadModelButton @file-selected="handleFile" />
 

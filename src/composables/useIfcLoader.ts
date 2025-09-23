@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as OBC from "@thatopen/components";
+import { useModelLoadingProgress } from "@/composables/useModelLoadingProgress";
 import type { IfcWasmConfig, ModelSource, AlignMode } from "@/types/ifc-viewer";
 
 type FragsReadyLike = { ready: Promise<unknown> };
@@ -74,31 +75,43 @@ export function useIfcLoader(
     source: ModelSource,
     opts?: { name?: string; liftBy?: number; autoFit?: boolean }
   ) {
-    const buffer = await toUint8Array(source);
+    const { show, animateTo, finish, hide } = useModelLoadingProgress();
+    const { name = "model", liftBy = 0 } = opts ?? {};
 
-    await ifcLoader.load(buffer, false, opts?.name ?? "model", {
-      processData: {
-        progressCallback: (p: number) =>
-          console.log(`Прогресс рендера модели: ${Math.round(p * 100)}%`),
-      },
-    });
+    show(UI_START);
 
-    // дождаться хотя бы одной группы
-    await waitUntil(() => getFragsMgr().list.size > 0, 4000, "firstGroup");
-    getFragsMgr().core.update(true);
+    try {
+      const buffer = await toUint8Array(source);
 
-    // дождаться непустого bbox
-    await waitUntil(
-      () => Number.isFinite(computeBBoxOfAll().min.y),
-      4000,
-      "nonEmptyBBox"
-    );
+      await ifcLoader.load(buffer, false, name, {
+        processData: {
+          progressCallback: (p: number) => {
+            const pct = clamp(Math.round(p * 100), UI_START, UI_CAP);
+            animateTo(pct);
+          },
+        },
+      });
 
-    const [model] = getFragsMgr().list.values();
-    if (!model) return;
+      // пост-этапы (фрагменты/обновление/bbox)
+      await waitUntil(() => getFragsMgr().list.size > 0, 4000, "firstGroup");
+      const frags = getFragsMgr();
+      frags.core.update(true);
 
-    if ((opts?.liftBy ?? 0) !== 0) {
-      model.object.position.y += opts!.liftBy!;
+      // дождаться непустого bbox
+      await waitUntil(
+        () => Number.isFinite(computeBBoxOfAll().min.y),
+        4000,
+        "nonEmptyBBox"
+      );
+
+      const [model] = frags.list.values();
+      if (model && liftBy !== 0) model.object.position.y += liftBy;
+
+      finish(250);
+      return model ?? null;
+    } catch (e) {
+      hide();
+      throw e;
     }
   }
 
@@ -172,3 +185,8 @@ export function useIfcLoader(
 
   return { setup, load, clear, groundToGrid, alignHorizontally } as const;
 }
+
+const UI_START = 5;
+const UI_CAP = 90;
+
+const clamp = (x: number, a = 0, b = 100) => Math.max(a, Math.min(b, x));
