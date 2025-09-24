@@ -18,7 +18,9 @@ import { useFragments } from "@/composables/useFragments";
 import { useIfcLoader } from "@/composables/useIfcLoader";
 import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
+import { useLengthMeasurement } from "@/composables/useLengthMeasurement";
 import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
+import LengthMeasurePanel from "@/components/LengthMeasurePanel.vue";
 
 interface Props {
   config: ModelViewerConfig;
@@ -39,12 +41,25 @@ let cam: ReturnType<typeof useCamera>;
 
 const {
   state,
-  updateMeasurementOptions,
-  activateMeasurement,
+  updateAreaMeasurementOptions,
+  activateAreaMeasurement,
   start,
   finishMeasurement,
   clearMeasurement,
 } = useAreaMeasurement({
+  components,
+  world,
+  container: containerRef,
+});
+
+const {
+  state: lengthState,
+  updateLengthMeasurementOptions,
+  activateLengthMeasurement,
+  start: startLength,
+  finishMeasurement: finishLength,
+  clearMeasurement: clearLength,
+} = useLengthMeasurement({
   components,
   world,
   container: containerRef,
@@ -147,7 +162,8 @@ onBeforeUnmount(() => {
     disposeWorld?.();
   } catch {}
 
-  activateMeasurement(false);
+  activateAreaMeasurement(false);
+  activateLengthMeasurement(false);
 });
 
 watch(
@@ -162,21 +178,22 @@ watch(
   ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0)
 );
 
+// Отслеживание для AreaMeasurement
 watch(
   [measureEnabled, measureReady],
   async ([enabled, ready]) => {
     await nextTick();
 
     if (enabled && ready) {
-      updateMeasurementOptions({
+      updateAreaMeasurementOptions({
         color: config.value.measure?.color,
         units: config.value.measure?.units,
         rounding: config.value.measure?.rounding,
         visible: config.value.measure?.visible ?? true,
       });
-      activateMeasurement(true);
+      activateAreaMeasurement(true);
     } else {
-      activateMeasurement(false);
+      activateAreaMeasurement(false);
     }
   },
   { immediate: true, flush: "post" }
@@ -186,9 +203,41 @@ watch(
   () => props.measurePanelsVisibility.square,
   (visible) => {
     if (visible) {
-      activateMeasurement(true);
+      activateAreaMeasurement(true);
     } else {
-      activateMeasurement(false);
+      activateAreaMeasurement(false);
+    }
+  },
+  { immediate: true }
+);
+
+// Отслеживание для LengthMeasurement
+watch(
+  [measureEnabled, measureReady],
+  async ([enabled, ready]) => {
+    await nextTick();
+    if (enabled && ready) {
+      updateLengthMeasurementOptions({
+        color: config.value.measure?.color,
+        units: config.value.measure?.units,
+        rounding: config.value.measure?.rounding,
+        visible: config.value.measure?.visible ?? true,
+      });
+      activateLengthMeasurement(true);
+    } else {
+      activateLengthMeasurement(false);
+    }
+  },
+  { immediate: true, flush: "post" }
+);
+
+watch(
+  () => props.measurePanelsVisibility.linear,
+  (visible) => {
+    if (visible) {
+      activateLengthMeasurement(true);
+    } else {
+      activateLengthMeasurement(false);
     }
   },
   { immediate: true }
@@ -200,15 +249,28 @@ watch(
     <AreaMeasurePanel
       v-if="measurePanelsVisibility.square"
       :state="state"
-      @toggle:enabled="(v: boolean) => activateMeasurement(v)"
-      @toggle:visible="(v: boolean) => updateMeasurementOptions({ visible: v })"
-      @change:color="(v: string) => updateMeasurementOptions({ color: v })"
-      @change:mode="(v: string) => updateMeasurementOptions({ mode: v })"
-      @change:units="(v: string) => updateMeasurementOptions({ units: v })"
-      @change:rounding="(v: number) => updateMeasurementOptions({ rounding: v })"
+      @toggle:enabled="(v: boolean) => activateAreaMeasurement(v)"
+      @toggle:visible="(v: boolean) => updateAreaMeasurementOptions({ visible: v })"
+      @change:color="(v: string) => updateAreaMeasurementOptions({ color: v })"
+      @change:mode="(v: string) => updateAreaMeasurementOptions({ mode: v })"
+      @change:units="(v: string) => updateAreaMeasurementOptions({ units: v })"
+      @change:rounding="(v: number) => updateAreaMeasurementOptions({ rounding: v })"
       @action:start="start"
       @action:finishMeasurement="finishMeasurement"
       @action:clearMeasurement="clearMeasurement"
+    />
+    <LengthMeasurePanel
+      v-if="measurePanelsVisibility.linear"
+      :state="lengthState"
+      @toggle:enabled="(v: boolean) => activateLengthMeasurement(v)"
+      @toggle:visible="(v: boolean) => updateLengthMeasurementOptions({ visible: v })"
+      @change:color="(v: string) => updateLengthMeasurementOptions({ color: v })"
+      @change:mode="(v: string) => updateLengthMeasurementOptions({ mode: v })"
+      @change:units="(v: string) => updateLengthMeasurementOptions({ units: v })"
+      @change:rounding="(v: number) => updateLengthMeasurementOptions({ rounding: v })"
+      @action:start="startLength"
+      @action:finishMeasurement="finishLength"
+      @action:clearMeasurement="clearLength"
     />
     <slot />
   </div>

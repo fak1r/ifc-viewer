@@ -3,7 +3,7 @@ import * as THREE from "three";
 import * as OBF from "@thatopen/components-front";
 import type { Components, World } from "@thatopen/components";
 
-export interface AreaMeasurementOptions {
+export interface LengthMeasurementOptions {
   color?: string | number;
   enabled?: boolean;
   visible?: boolean;
@@ -12,20 +12,20 @@ export interface AreaMeasurementOptions {
   rounding?: number;
 }
 
-interface AreaMeasurementDeps {
+interface LengthMeasurementDeps {
   components: Ref<Components | null>;
   world: Ref<World | null>;
   container: Ref<HTMLElement | null>;
 }
 
-export function useAreaMeasurement(deps: AreaMeasurementDeps) {
+export function useLengthMeasurement(deps: LengthMeasurementDeps) {
   const componentsRef = deps.components;
   const worldRef = deps.world;
   const containerRef = deps.container;
 
-  const measurer = shallowRef<InstanceType<typeof OBF.AreaMeasurement> | null>(
-    null
-  );
+  const measurer = shallowRef<InstanceType<
+    typeof OBF.LengthMeasurement
+  > | null>(null);
   let removeListeners: (() => void) | null = null;
 
   const state = reactive({
@@ -39,26 +39,29 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     rounding: 2 as number,
   });
 
-  // Гарантируем, что deps готовы и measurer создан
+  // === ensure(): создать measurer и заполнить справочники ===
   function ensure() {
     if (!componentsRef.value || !worldRef.value) {
       throw new Error(
-        "AreaMeasurement not ready: components/world are undefined"
+        "LengthMeasurement not ready: components/world are undefined"
       );
     }
     if (!measurer.value) {
-      const m = componentsRef.value.get(OBF.AreaMeasurement);
+      const m = componentsRef.value.get(OBF.LengthMeasurement);
       m.world = worldRef.value;
-      // автокадр на добавление измерения
-      m.list.onItemAdded.add((area) => {
-        if (!area.boundingBox) return;
-        const sphere = new THREE.Sphere();
-        area.boundingBox.getBoundingSphere(sphere);
-        if (worldRef.value && worldRef.value.camera.controls) {
-          worldRef.value.camera.controls.fitToSphere(sphere, true);
-        }
+
+      // Автокадр по добавлению линии: центр + радиус по длине
+      m.list.onItemAdded.add((line) => {
+        try {
+          const center = new THREE.Vector3();
+          line.getCenter(center);
+          const radius = Math.max(1e-3, line.distance() / 3);
+          const sphere = new THREE.Sphere(center, radius);
+          worldRef.value?.camera.controls?.fitToSphere(sphere, true);
+        } catch {}
       });
-      // заполнить доступные списки
+
+      // Заполнить UI-списки
       state.modes = [...m.modes];
       state.mode = m.mode;
       state.unitsList = [...m.unitsList];
@@ -70,10 +73,10 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     return measurer.value!;
   }
 
-  function setupMeasurement(opts: AreaMeasurementOptions = {}) {
+  // === Первичная установка опций + синхронизация state ===
+  function setupMeasurement(opts: LengthMeasurementOptions = {}) {
     const m = ensure();
-    updateAreaMeasurementOptions(opts);
-    // синхронизируем state с фактическими значениями
+    updateLengthMeasurementOptions(opts);
     state.enabled = m.enabled;
     state.visible = m.visible;
     state.color = `#${m.linesMaterial.color.getHexString()}`;
@@ -82,7 +85,8 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     state.rounding = m.rounding ?? 2;
   }
 
-  function updateAreaMeasurementOptions(opts: AreaMeasurementOptions = {}) {
+  // === Обновление опций инструмента ===
+  function updateLengthMeasurementOptions(opts: LengthMeasurementOptions = {}) {
     const m = ensure();
     if (opts.enabled !== undefined) {
       m.enabled = opts.enabled;
@@ -110,55 +114,38 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     }
   }
 
+  // === API как у Area ===
+  const start = () => ensure().create();
+  const finishMeasurement = () => ensure().endCreation?.();
+  const clearMeasurement = () => ensure().list.clear();
+
   function onKeydown(e: KeyboardEvent) {
     if (e.code === "Enter" || e.code === "NumpadEnter") finishMeasurement();
     if (e.code === "Delete" || e.code === "Backspace") clearMeasurement();
   }
 
-  function activateAreaMeasurement(on: boolean) {
-    // выключение инструмента
+  // === Включение/выключение инструмента (подписки тут!) ===
+  function activateLengthMeasurement(on: boolean) {
+    // OFF
     if (!on) {
-      // снимаем слушатели, если были
       removeListeners?.();
       removeListeners = null;
-
-      // гасим внутреннее состояние инструмента
       try {
         const m = measurer.value;
         if (m) {
-          // завершить/отменить активное построение, если было
           m.endCreation?.();
-          // выключить режим инструмента, чтобы он не держал курсор
           m.enabled = false;
-          // спрятать визуализацию, если нужно
-          m.visible = false;
+          // оставляем видимость такой, какой задана в state
+          m.visible = state.visible;
         }
       } catch {}
-
-      // вернуть обычный курсор контейнеру
-      if (containerRef.value) {
-        containerRef.value.style.cursor = "";
-      }
-
       state.enabled = false;
-      state.visible = false;
-
       return;
     }
 
-    // включение инструмента
-    if (!ensure()) {
-      // мир не готов — просто выходим, watcher в компоненте дернёт повторно позже
-      return;
-    }
-
-    // идемпотентность: если уже включено и слушатели навешаны — выходим
-    if (removeListeners) return;
-
-    // 1) инициализируем инструмент (без глобальных подписок!)
+    // ON
     setupMeasurement({ enabled: true, visible: true });
 
-    // 2) вешаем слушатели (вместо onMounted в компоненте)
     const dblTarget: EventTarget = (containerRef.value ??
       window) as EventTarget;
     const onDblClick: EventListener = () => start();
@@ -167,7 +154,6 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     dblTarget.addEventListener("dblclick", onDblClick);
     window.addEventListener("keydown", onKeyDown);
 
-    // 3) готовим функцию снятия
     removeListeners = () => {
       dblTarget.removeEventListener("dblclick", onDblClick);
       window.removeEventListener("keydown", onKeyDown);
@@ -176,20 +162,24 @@ export function useAreaMeasurement(deps: AreaMeasurementDeps) {
     state.enabled = true;
   }
 
-  const start = () => ensure().create();
-  const finishMeasurement = () => ensure().endCreation();
-  const clearMeasurement = () => ensure().list.clear();
-
   onBeforeUnmount(() => {
-    activateAreaMeasurement(false);
+    removeListeners?.();
+    removeListeners = null;
+    try {
+      const m = measurer.value;
+      if (m) {
+        m.endCreation?.();
+        m.enabled = false;
+      }
+    } catch {}
   });
 
   return {
     measurer,
     state,
     setupMeasurement,
-    updateAreaMeasurementOptions,
-    activateAreaMeasurement,
+    updateLengthMeasurementOptions,
+    activateLengthMeasurement,
     start,
     finishMeasurement,
     clearMeasurement,
