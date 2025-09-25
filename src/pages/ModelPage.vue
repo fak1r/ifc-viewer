@@ -14,15 +14,19 @@ const config: ModelViewerConfig = {
   background: "#0e0111",
 };
 
-const measurePanelsVisibility = reactive<{ square: boolean; linear: boolean }>({
-  square: false,
-  linear: false,
-});
-
+const measurePanelsVisibility = reactive({ square: false, linear: false });
 const viewerRef = ref<InstanceType<typeof ModelViewer> | null>(null);
 
 function toggleVisibleMeasure(name: "square" | "linear") {
-  measurePanelsVisibility[name] = !measurePanelsVisibility[name];
+  if (name === "square") {
+    const next = !measurePanelsVisibility.square;
+    measurePanelsVisibility.square = next; // показать/скрыть Area
+    measurePanelsVisibility.linear = false; // всегда гасим Length
+  } else {
+    const next = !measurePanelsVisibility.linear;
+    measurePanelsVisibility.linear = next; // показать/скрыть Length
+    measurePanelsVisibility.square = false; // всегда гасим Area
+  }
 }
 
 async function handleFile(file: File) {

@@ -57,3 +57,9 @@ export interface MeasureConfig {
 }
 
 export type AlignMode = "center" | "min" | "max";
+
+export type ToolApi = {
+  setupMeasurement?: (opts?: Record<string, any>) => void;
+  activateMeasurement: (on: boolean) => void;
+  state: { enabled: boolean; ready?: boolean };
+};

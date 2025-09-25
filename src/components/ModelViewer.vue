@@ -10,7 +10,11 @@ import {
   nextTick,
 } from "vue";
 import * as OBC from "@thatopen/components";
-import type { ModelViewerConfig, ModelSource } from "@/types/ifc-viewer";
+import type {
+  ModelViewerConfig,
+  ModelSource,
+  ToolApi,
+} from "@/types/ifc-viewer";
 import { useWorld } from "@/composables/useWorld";
 import { useCamera } from "@/composables/useCamera";
 import { useGrid } from "@/composables/useGrid";
@@ -19,6 +23,7 @@ import { useIfcLoader } from "@/composables/useIfcLoader";
 import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/useAreaMeasurement";
 import { useLengthMeasurement } from "@/composables/useLengthMeasurement";
+import { useMeasurementRouter } from "@/composables/measure/useMeasurementRouter";
 import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
 import LengthMeasurePanel from "@/components/LengthMeasurePanel.vue";
 
@@ -40,30 +45,46 @@ const world = shallowRef<OBC.World | null>(null);
 let cam: ReturnType<typeof useCamera>;
 
 const {
-  state,
-  updateAreaMeasurementOptions,
-  activateAreaMeasurement,
-  start,
-  finishMeasurement,
-  clearMeasurement,
-} = useAreaMeasurement({
-  components,
-  world,
-  container: containerRef,
-});
+  state: areaState,
+  setupMeasurement: areaSetupMeasurement,
+  updateMeasurementOptions: updateAreaOptions,
+  activateMeasurement: activateArea,
+  start: startArea,
+  finishMeasurement: finishArea,
+  clearMeasurement: clearArea,
+} = useAreaMeasurement({ components, world });
 
 const {
   state: lengthState,
-  updateLengthMeasurementOptions,
-  activateLengthMeasurement,
+  setupMeasurement: lengthSetupMeasurement,
+  updateMeasurementOptions: updateLengthOptions,
+  activateMeasurement: activateLength,
   start: startLength,
   finishMeasurement: finishLength,
   clearMeasurement: clearLength,
-} = useLengthMeasurement({
-  components,
-  world,
+  deleteSelected: deleteLengthSelected,
+} = useLengthMeasurement({ components, world });
+
+const { setActive } = useMeasurementRouter({
   container: containerRef,
+  tools: {
+    area: {
+      state: areaState,
+      start: startArea,
+      finishMeasurement: finishArea,
+      clearMeasurement: clearArea,
+    },
+    length: {
+      state: lengthState,
+      start: startLength,
+      finishMeasurement: finishLength,
+      clearMeasurement: clearLength,
+      deleteSelected: deleteLengthSelected,
+    },
+  },
 });
+
+let measurementsInited = false;
 
 let disposeWorld: (() => void) | undefined;
 let disposeGrid: (() => void) | undefined;
@@ -71,8 +92,7 @@ let disposeStats: (() => void) | undefined;
 let disposeFragments: (() => void) | undefined;
 let ifc: ReturnType<typeof useIfcLoader> | undefined;
 
-const measureEnabled = computed(() => !!config.value.measure?.enabled);
-const measureReady = computed(() => !!world.value && !!components.value);
+const depsReady = computed(() => !!components.value && !!world.value);
 
 async function loadModel(source: ModelSource) {
   if (!ifc) throw new Error("Viewer is not ready yet");
@@ -94,6 +114,22 @@ async function loadModel(source: ModelSource) {
 
 function clear() {
   ifc?.clear();
+}
+
+async function handlePanelToggle(
+  visible: boolean,
+  api: ToolApi,
+  depsReady: boolean
+) {
+  if (!depsReady) return; // мир ещё не готов — ждём следующего прохода
+
+  if (visible) {
+    await nextTick();
+    api.setupMeasurement?.(); // лениво инициализируем (без дублей)
+    api.activateMeasurement(api.state.enabled); // синхронизация с чекбоксом
+  } else {
+    if (api.state.ready) api.activateMeasurement(false); // мягкое выключение
+  }
 }
 
 defineExpose({ loadModel, clear });
@@ -146,8 +182,17 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  // Выключить измерители
   try {
-    ifc?.clear();
+    activateArea?.(false);
+  } catch {}
+  try {
+    activateLength?.(false);
+  } catch {}
+
+  // Очистить мир
+  try {
+    ifc?.clear?.();
   } catch {}
   try {
     disposeFragments?.();
@@ -161,9 +206,6 @@ onBeforeUnmount(() => {
   try {
     disposeWorld?.();
   } catch {}
-
-  activateAreaMeasurement(false);
-  activateLengthMeasurement(false);
 });
 
 watch(
@@ -178,67 +220,66 @@ watch(
   ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0)
 );
 
-// Отслеживание для AreaMeasurement
+// Включаем измерения при появлении панели
 watch(
-  [measureEnabled, measureReady],
-  async ([enabled, ready]) => {
-    await nextTick();
-
-    if (enabled && ready) {
-      updateAreaMeasurementOptions({
-        color: config.value.measure?.color,
-        units: config.value.measure?.units,
-        rounding: config.value.measure?.rounding,
-        visible: config.value.measure?.visible ?? true,
-      });
-      activateAreaMeasurement(true);
-    } else {
-      activateAreaMeasurement(false);
-    }
+  () => props.measurePanelsVisibility?.square,
+  (v) => {
+    if (v) setActive("area");
   },
-  { immediate: true, flush: "post" }
+  { immediate: true }
 );
 
 watch(
-  () => props.measurePanelsVisibility.square,
-  (visible) => {
-    if (visible) {
-      activateAreaMeasurement(true);
-    } else {
-      activateAreaMeasurement(false);
+  () => props.measurePanelsVisibility?.linear,
+  (v) => {
+    if (v) setActive("length");
+  },
+  { immediate: true }
+);
+
+watch(
+  [() => components.value, () => world.value],
+  async ([c, w]) => {
+    if (!measurementsInited && c && w) {
+      await nextTick();
+      areaSetupMeasurement?.();
+      lengthSetupMeasurement?.();
+      measurementsInited = true;
     }
   },
   { immediate: true }
 );
 
-// Отслеживание для LengthMeasurement
+// Area / square
 watch(
-  [measureEnabled, measureReady],
-  async ([enabled, ready]) => {
-    await nextTick();
-    if (enabled && ready) {
-      updateLengthMeasurementOptions({
-        color: config.value.measure?.color,
-        units: config.value.measure?.units,
-        rounding: config.value.measure?.rounding,
-        visible: config.value.measure?.visible ?? true,
-      });
-      activateLengthMeasurement(true);
-    } else {
-      activateLengthMeasurement(false);
-    }
+  () => props.measurePanelsVisibility.square,
+  (visible) => {
+    handlePanelToggle(
+      visible,
+      {
+        setupMeasurement: areaSetupMeasurement,
+        activateMeasurement: activateArea,
+        state: areaState,
+      },
+      depsReady.value
+    );
   },
-  { immediate: true, flush: "post" }
+  { immediate: true }
 );
 
+// Length / linear
 watch(
   () => props.measurePanelsVisibility.linear,
   (visible) => {
-    if (visible) {
-      activateLengthMeasurement(true);
-    } else {
-      activateLengthMeasurement(false);
-    }
+    handlePanelToggle(
+      visible,
+      {
+        setupMeasurement: lengthSetupMeasurement,
+        activateMeasurement: activateLength,
+        state: lengthState,
+      },
+      depsReady.value
+    );
   },
   { immediate: true }
 );
@@ -248,27 +289,26 @@ watch(
   <div ref="containerRef" class="viewer">
     <AreaMeasurePanel
       v-if="measurePanelsVisibility.square"
-      :state="state"
-      @toggle:enabled="(v: boolean) => activateAreaMeasurement(v)"
-      @toggle:visible="(v: boolean) => updateAreaMeasurementOptions({ visible: v })"
-      @change:color="(v: string) => updateAreaMeasurementOptions({ color: v })"
-      @change:mode="(v: string) => updateAreaMeasurementOptions({ mode: v })"
-      @change:units="(v: string) => updateAreaMeasurementOptions({ units: v })"
-      @change:rounding="(v: number) => updateAreaMeasurementOptions({ rounding: v })"
-      @action:start="start"
-      @action:finishMeasurement="finishMeasurement"
-      @action:clearMeasurement="clearMeasurement"
+      :state="areaState"
+      @toggle:enabled="(v: boolean) => activateArea(v)"
+      @toggle:visible="(v: boolean) => updateAreaOptions({ visible: v })"
+      @change:color="(v: string) => updateAreaOptions({ color: v })"
+      @change:mode="(v: string) => updateAreaOptions({ mode: v })"
+      @change:units="(v: string) => updateAreaOptions({ units: v })"
+      @change:rounding="(v: number) => updateAreaOptions({ rounding: v })"
+      @action:start="startArea"
+      @action:finishMeasurement="finishArea"
+      @action:clearMeasurement="clearArea"
     />
     <LengthMeasurePanel
       v-if="measurePanelsVisibility.linear"
       :state="lengthState"
-      @toggle:enabled="(v: boolean) => activateLengthMeasurement(v)"
-      @toggle:visible="(v: boolean) => updateLengthMeasurementOptions({ visible: v })"
-      @change:color="(v: string) => updateLengthMeasurementOptions({ color: v })"
-      @change:mode="(v: string) => updateLengthMeasurementOptions({ mode: v })"
-      @change:units="(v: string) => updateLengthMeasurementOptions({ units: v })"
-      @change:rounding="(v: number) => updateLengthMeasurementOptions({ rounding: v })"
-      @action:start="startLength"
+      @toggle:enabled="(v: boolean) => activateLength(v)"
+      @toggle:visible="(v: boolean) => updateLengthOptions({ visible: v })"
+      @change:color="(v: string) => updateLengthOptions({ color: v })"
+      @change:mode="(v: string) => updateLengthOptions({ mode: v })"
+      @change:units="(v: string) => updateLengthOptions({ units: v })"
+      @change:rounding="(v: number) => updateLengthOptions({ rounding: v })"
       @action:finishMeasurement="finishLength"
       @action:clearMeasurement="clearLength"
     />

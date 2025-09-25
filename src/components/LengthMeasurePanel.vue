@@ -130,7 +130,7 @@ function clearMeasurement() {
 .measure-panel {
   position: absolute;
   z-index: 10;
-  top: 48px;
+  top: 218px;
   left: 12px;
   padding: 10px;
   background: rgba(20, 20, 28, 0.8);
