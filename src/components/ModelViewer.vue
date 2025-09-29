@@ -24,6 +24,7 @@ import { useBackground } from "@/composables/useBackground";
 import { useAreaMeasurement } from "@/composables/measure/useAreaMeasurement";
 import { useLengthMeasurement } from "@/composables/measure/useLengthMeasurement";
 import { useMeasurementRouter } from "@/composables/measure/useMeasurementRouter";
+import { useMeasurementPanels } from "@/composables/measure/useMeasurementPanels";
 import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
 import LengthMeasurePanel from "@/components/LengthMeasurePanel.vue";
 
@@ -250,39 +251,22 @@ watch(
   { immediate: true }
 );
 
-// Area / square
-watch(
-  () => props.measurePanelsVisibility.square,
-  (visible) => {
-    handlePanelToggle(
-      visible,
-      {
-        setupMeasurement: areaSetupMeasurement,
-        activateMeasurement: activateArea,
-        state: areaState,
-      },
-      depsReady.value
-    );
+// Управляет жизненным циклом измерителей (setup/вкл/выкл, depsReady).
+useMeasurementPanels({
+  panelsVisibility: computed(() => props.measurePanelsVisibility),
+  depsReady,
+  area: {
+    setupMeasurement: areaSetupMeasurement,
+    activateMeasurement: activateArea,
+    state: areaState,
   },
-  { immediate: true }
-);
-
-// Length / linear
-watch(
-  () => props.measurePanelsVisibility.linear,
-  (visible) => {
-    handlePanelToggle(
-      visible,
-      {
-        setupMeasurement: lengthSetupMeasurement,
-        activateMeasurement: activateLength,
-        state: lengthState,
-      },
-      depsReady.value
-    );
+  length: {
+    setupMeasurement: lengthSetupMeasurement,
+    activateMeasurement: activateLength,
+    state: lengthState,
   },
-  { immediate: true }
-);
+  handlePanelToggle,
+});
 </script>
 
 <template>
