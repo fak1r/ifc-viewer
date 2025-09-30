@@ -5,6 +5,8 @@ import type { IfcWasmConfig, ModelSource, AlignMode } from "@/types/ifc-viewer";
 
 type FragsReadyLike = { ready: Promise<unknown> };
 
+const webIfcVersion = import.meta.env.VITE_WEB_IFC_VERSION ?? "0.0.71";
+
 export function useIfcLoader(
   components: OBC.Components,
   frags: FragsReadyLike,
@@ -23,7 +25,10 @@ export function useIfcLoader(
         absolute: wasm.absolute ?? true,
       };
     }
-    return { path: "https://unpkg.com/web-ifc@0.0.71/", absolute: true };
+    return {
+      path: `https://unpkg.com/web-ifc@${webIfcVersion}/`,
+      absolute: true,
+    };
   }
 
   async function setup() {
@@ -61,13 +66,14 @@ export function useIfcLoader(
     return true;
   }
 
-  function getFragsMgr() {
+  function getFragmentsManager() {
     return components.get(OBC.FragmentsManager);
   }
 
   function computeBBoxOfAll(): THREE.Box3 {
     const box = new THREE.Box3().makeEmpty();
-    for (const m of getFragsMgr().list.values()) box.expandByObject(m.object);
+    for (const m of getFragmentsManager().list.values())
+      box.expandByObject(m.object);
     return box;
   }
 
@@ -77,6 +83,11 @@ export function useIfcLoader(
   ) {
     const { show, animateTo, finish, hide } = useModelLoadingProgress();
     const { name = "model", liftBy = 0 } = opts ?? {};
+
+    const UI_START = 5;
+    const UI_CAP = 90;
+
+    const clamp = (x: number, a = 0, b = 100) => Math.max(a, Math.min(b, x));
 
     show(UI_START);
 
@@ -93,8 +104,12 @@ export function useIfcLoader(
       });
 
       // пост-этапы (фрагменты/обновление/bbox)
-      await waitUntil(() => getFragsMgr().list.size > 0, 4000, "firstGroup");
-      const frags = getFragsMgr();
+      await waitUntil(
+        () => getFragmentsManager().list.size > 0,
+        4000,
+        "firstGroup"
+      );
+      const frags = getFragmentsManager();
       frags.core.update(true);
 
       // дождаться непустого bbox
@@ -117,7 +132,7 @@ export function useIfcLoader(
 
   function clear() {
     try {
-      const frags = getFragsMgr();
+      const frags = getFragmentsManager();
       for (const m of frags.list.values()) {
         try {
           m.object.parent?.remove(m.object);
@@ -142,7 +157,7 @@ export function useIfcLoader(
     const box = computeBBoxOfAll();
     const delta = gridY + extraLift - box.min.y;
 
-    const frags = getFragsMgr();
+    const frags = getFragmentsManager();
     for (const m of frags.list.values()) m.object.position.y += delta;
     frags.core.update(true);
   }
@@ -175,7 +190,7 @@ export function useIfcLoader(
     const dx = targetX - refX;
     const dz = targetZ - refZ;
 
-    const frags = getFragsMgr();
+    const frags = getFragmentsManager();
     for (const m of frags.list.values()) {
       m.object.position.x += dx;
       m.object.position.z += dz;
@@ -185,8 +200,3 @@ export function useIfcLoader(
 
   return { setup, load, clear, groundToGrid, alignHorizontally } as const;
 }
-
-const UI_START = 5;
-const UI_CAP = 90;
-
-const clamp = (x: number, a = 0, b = 100) => Math.max(a, Math.min(b, x));
