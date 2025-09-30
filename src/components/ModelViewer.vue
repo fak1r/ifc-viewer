@@ -63,7 +63,6 @@ const {
   start: startLength,
   finishMeasurement: finishLength,
   clearMeasurement: clearLength,
-  deleteSelected: deleteLengthSelected,
 } = useLengthMeasurement({ components, world });
 
 const { setActive } = useMeasurementRouter({
@@ -80,7 +79,6 @@ const { setActive } = useMeasurementRouter({
       start: startLength,
       finishMeasurement: finishLength,
       clearMeasurement: clearLength,
-      deleteSelected: deleteLengthSelected,
     },
   },
 });

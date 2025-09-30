@@ -14,84 +14,70 @@ interface LengthMeasurementDeps extends MeasurementDeps {
 }
 
 export function useLengthMeasurement(deps: LengthMeasurementDeps) {
-  const base = useMeasurementBase(
-    {
-      components: deps.components,
-      world: deps.world,
-    },
-    {
-      createMeasurer: (c) => c.get(OBF.LengthMeasurement),
-      onItemAdded: ({ item, world }) => {
-        // у линии нет bbox, подзумимся по центру и длине
-        try {
-          const center = new THREE.Vector3();
-          item.getCenter(center);
-          const radius = Math.max(1e-3, item.distance() / 3);
-          const sphere = new THREE.Sphere(center, radius);
-          world.camera.controls?.fitToSphere(sphere, true);
-        } catch {}
-      },
-    }
-  );
+  const base = useMeasurementBase<OBF.LengthMeasurement>(deps, {
+    // создаём измеритель через контейнер компонентов
+    createMeasurer: (c) => c.get(OBF.LengthMeasurement),
 
-  // Специфика Length
+    // подтягиваем/устанавливаем цвет из материала линий, если есть
+    getColor: (m: any) => {
+      if (m?.linesMaterial?.color) return m.linesMaterial.color as THREE.Color;
+      if (m?.color) return m.color as THREE.Color;
+      return null;
+    },
+    setColor: (m: any, color: THREE.Color) => {
+      if (m?.linesMaterial?.color)
+        (m.linesMaterial.color as THREE.Color).set(color);
+      else if (m?.color) (m.color as THREE.Color).set(color);
+    },
+
+    // автокадр по добавленному отрезку
+    onItemAdded: ({ item, world }) => {
+      try {
+        // item.distance() — длина; возьмём центр и радиус пропорционально длине
+        const center = new THREE.Vector3();
+        item.getCenter(center);
+        const radius = Math.max(1e-3, item.distance() / 3);
+        const sphere = new THREE.Sphere(center, radius);
+        world.camera.controls?.fitToSphere(sphere, true);
+      } catch {
+        /* no-op */
+      }
+    },
+  });
+
+  // Базовые действия инструмента
   function start() {
     const m: any = base.measurer.value;
-    m?.create?.();
+    // поддерживаем оба варианта API (по аналогии с AreaMeasurement)
+    m?.startCreation?.() ?? m?.create?.();
   }
+
   function finishMeasurement() {
     const m: any = base.measurer.value;
-    m?.endCreation?.(); // на всякий случай, если будет режим с поэтапным вводом
+    m?.endCreation?.();
   }
+
   function clearMeasurement() {
     base.clear();
   }
+
   function activateMeasurement(on: boolean) {
     base.setEnabled(on);
   }
 
-  function displayRectangleDimensions() {
-    const m: any = base.measurer.value;
-    if (!m?.lines) return;
-    for (const dim of m.lines) dim.displayRectangularDimensions?.();
-  }
-  function invertRectangleDimensions() {
-    const m: any = base.measurer.value;
-    if (!m?.lines) return;
-    for (const dim of m.lines) dim.invertRectangularDimensions?.();
-  }
-  function displayProjectionDimensions() {
-    const m: any = base.measurer.value;
-    if (!m?.lines) return;
-    for (const dim of m.lines) dim.displayProjectionDimensions?.();
-  }
-  function removeComplementaryDimensions() {
-    const m: any = base.measurer.value;
-    if (!m?.lines) return;
-    for (const dim of m.lines) {
-      dim.rectangleDimensions?.clear?.();
-      dim.projectionDimensions?.clear?.();
-    }
-  }
-  function deleteSelected() {
-    const m: any = base.measurer.value;
-    m?.delete?.();
-  }
-
   return {
+    // базовое
     measurer: base.measurer,
     state: base.state,
+
+    // настройка
     setupMeasurement: (opts?: MeasurementOptions) => base.setup(opts),
     updateMeasurementOptions: base.updateOptions,
+
+    // операции
     activateMeasurement,
     start,
     finishMeasurement,
     clearMeasurement,
-    // опционально:
-    deleteSelected,
-    displayRectangleDimensions,
-    invertRectangleDimensions,
-    displayProjectionDimensions,
-    removeComplementaryDimensions,
   };
 }
