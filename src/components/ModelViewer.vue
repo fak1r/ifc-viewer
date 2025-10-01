@@ -25,8 +25,7 @@ import { useAreaMeasurement } from "@/composables/measure/useAreaMeasurement";
 import { useLengthMeasurement } from "@/composables/measure/useLengthMeasurement";
 import { useMeasurementRouter } from "@/composables/measure/useMeasurementRouter";
 import { useMeasurementPanels } from "@/composables/measure/useMeasurementPanels";
-import AreaMeasurePanel from "@/components/AreaMeasurePanel.vue";
-import LengthMeasurePanel from "@/components/LengthMeasurePanel.vue";
+import MeasurePanel from "@/components/MeasurePanel.vue";
 
 interface Props {
   config: ModelViewerConfig;
@@ -269,9 +268,11 @@ useMeasurementPanels({
 
 <template>
   <div ref="containerRef" class="viewer">
-    <AreaMeasurePanel
+    <MeasurePanel
       v-if="measurePanelsVisibility.square"
       :state="areaState"
+      variant="area"
+      :top="48"
       @toggle:enabled="(v: boolean) => activateArea(v)"
       @toggle:visible="(v: boolean) => updateAreaOptions({ visible: v })"
       @change:color="(v: string) => updateAreaOptions({ color: v })"
@@ -282,9 +283,11 @@ useMeasurementPanels({
       @action:finishMeasurement="finishArea"
       @action:clearMeasurement="clearArea"
     />
-    <LengthMeasurePanel
+    <MeasurePanel
       v-if="measurePanelsVisibility.linear"
       :state="lengthState"
+      variant="length"
+      :top="218"
       @toggle:enabled="(v: boolean) => activateLength(v)"
       @toggle:visible="(v: boolean) => updateLengthOptions({ visible: v })"
       @change:color="(v: string) => updateLengthOptions({ color: v })"

@@ -14,52 +14,75 @@ interface MeasureState {
 
 interface Props {
   state: MeasureState;
+  variant?: "area" | "length";
+  top?: number;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  variant: "area",
+  top: 48,
+});
 
-type Emit =
-  | ((e: "toggle:enabled", value: boolean) => void)
-  | ((e: "toggle:visible", value: boolean) => void)
-  | ((e: "change:color", value: string) => void)
-  | ((e: "change:mode", value: string) => void)
-  | ((e: "change:units", value: string) => void)
-  | ((e: "change:rounding", value: number) => void)
-  | ((e: "action:finishMeasurement") => void)
-  | ((e: "action:clearMeasurement") => void);
+interface Emit {
+  "toggle:enabled": [value: boolean];
+  "toggle:visible": [value: boolean];
+  "change:color": [value: string];
+  "change:mode": [value: string];
+  "change:units": [value: string];
+  "change:rounding": [value: number];
+  "action:start": [];
+  "action:finishMeasurement": [];
+  "action:clearMeasurement": [];
+}
 
 const emit = defineEmits<Emit>();
 
 const rounding = computed({
   get: () => props.state.rounding,
-  set: (v: number) => emit("change:rounding", v),
+  set(v: number) {
+    emit("change:rounding", v);
+  },
 });
 
 function onToggleEnabled(e: Event) {
   emit("toggle:enabled", (e.target as HTMLInputElement).checked);
 }
+
 function onToggleVisible(e: Event) {
   emit("toggle:visible", (e.target as HTMLInputElement).checked);
 }
+
 function onChangeColor(e: Event) {
   emit("change:color", (e.target as HTMLInputElement).value);
 }
+
 function onChangeMode(e: Event) {
   emit("change:mode", (e.target as HTMLSelectElement).value);
 }
+
 function onChangeUnits(e: Event) {
   emit("change:units", (e.target as HTMLSelectElement).value);
 }
+
 function finishMeasurement() {
   emit("action:finishMeasurement");
 }
+
 function clearMeasurement() {
   emit("action:clearMeasurement");
 }
+
+const instructionText = computed(() =>
+  props.variant === "length"
+    ? "Создать линию (Двойной клик)"
+    : "Создать точку (Двойной клик)"
+);
+
+const panelStyle = computed(() => ({ top: `${props.top}px` }));
 </script>
 
 <template>
-  <div class="measure-panel">
+  <div class="measure-panel" :style="panelStyle">
     <div class="row">
       <label>
         <input
@@ -80,44 +103,35 @@ function clearMeasurement() {
     </div>
 
     <div class="row">
-      <label class="color">
-        Цвет:
+      <label class="grow">
+        Цвет
         <input type="color" :value="state.color" @input="onChangeColor" />
       </label>
-
       <label>
-        Режим:
+        Округление
+        <input type="number" min="0" max="5" v-model.number="rounding" />
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="grow">
+        Режим работы
         <select :value="state.mode" @change="onChangeMode">
-          <option v-for="m in state.modes" :key="m" :value="m">
-            {{ m }}
-          </option>
+          <option v-for="m in state.modes" :key="m" :value="m">{{ m }}</option>
         </select>
       </label>
-
-      <label>
-        Единицы:
+      <label class="grow">
+        Еденицы измерения
         <select :value="state.units" @change="onChangeUnits">
           <option v-for="u in state.unitsList" :key="u" :value="u">
             {{ u }}
           </option>
         </select>
       </label>
-
-      <label>
-        Точность:
-        <select v-model.number="rounding">
-          <option :value="0">0</option>
-          <option :value="1">1</option>
-          <option :value="2">2</option>
-          <option :value="3">3</option>
-          <option :value="4">4</option>
-          <option :value="5">5</option>
-        </select>
-      </label>
     </div>
 
     <div class="row">
-      <div>Создать линию (Двойной клик)</div>
+      <div>{{ instructionText }}</div>
       <button @click="finishMeasurement">Закончить измерения (Enter)</button>
       <button class="danger" @click="clearMeasurement">
         Удалить измерения (Del)
@@ -130,7 +144,6 @@ function clearMeasurement() {
 .measure-panel {
   position: absolute;
   z-index: 10;
-  top: 218px;
   left: 12px;
   padding: 10px;
   background: rgba(20, 20, 28, 0.8);
@@ -140,56 +153,32 @@ function clearMeasurement() {
   min-width: 280px;
   max-width: 400px;
   font-size: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-label {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
 }
 
-label.color input[type="color"] {
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-select {
-  background: var(--input-bg, #2b2b2b);
-  color: var(--input-fg, #eee);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 4px 8px;
+.row .grow {
+  flex: 1;
 }
 
 button {
-  background: var(--btn-color, #3f51b5);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background-color: var(--btn-color);
 
   &:hover {
-    background-color: var(--btn-hover, #5c6bc0);
+    background-color: var(--btn-hover);
   }
 }
 
 button.danger {
   background: #9a2b2b;
+  color: white;
 
   &:hover {
     background-color: #bd4a4a;
