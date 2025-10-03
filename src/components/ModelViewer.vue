@@ -25,6 +25,7 @@ import { useAreaMeasurement } from "@/composables/measure/useAreaMeasurement";
 import { useLengthMeasurement } from "@/composables/measure/useLengthMeasurement";
 import { useMeasurementRouter } from "@/composables/measure/useMeasurementRouter";
 import { useMeasurementPanels } from "@/composables/measure/useMeasurementPanels";
+import { useViewerFPS } from "@/composables/FPS/useViewerFPS";
 import MeasurePanel from "@/components/MeasurePanel.vue";
 
 interface Props {
@@ -40,6 +41,7 @@ const props = defineProps<Props>();
 const { config } = toRefs(props);
 
 const containerRef = ref<HTMLDivElement | null>(null);
+
 const components = shallowRef<OBC.Components | null>(null);
 const world = shallowRef<OBC.World | null>(null);
 let cam: ReturnType<typeof useCamera>;
@@ -264,6 +266,8 @@ useMeasurementPanels({
   },
   handlePanelToggle,
 });
+
+useViewerFPS(containerRef, config as ModelViewerConfig);
 </script>
 
 <template>

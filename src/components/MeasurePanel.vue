@@ -72,12 +72,6 @@ function clearMeasurement() {
   emit("action:clearMeasurement");
 }
 
-const instructionText = computed(() =>
-  props.variant === "length"
-    ? "Создать линию (Двойной клик)"
-    : "Создать точку (Двойной клик)"
-);
-
 const panelStyle = computed(() => ({ top: `${props.top}px` }));
 </script>
 
@@ -131,7 +125,7 @@ const panelStyle = computed(() => ({ top: `${props.top}px` }));
     </div>
 
     <div class="row">
-      <div>{{ instructionText }}</div>
+      <div>Создать точку (Двойной клик)</div>
       <button @click="finishMeasurement">Закончить измерения (Enter)</button>
       <button class="danger" @click="clearMeasurement">
         Удалить измерения (Del)
