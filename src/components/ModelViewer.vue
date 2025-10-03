@@ -267,7 +267,7 @@ useMeasurementPanels({
   handlePanelToggle,
 });
 
-useViewerFPS(containerRef, config as ModelViewerConfig);
+useViewerFPS(containerRef);
 </script>
 
 <template>

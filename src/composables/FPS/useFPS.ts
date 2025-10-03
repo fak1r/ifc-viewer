@@ -1,116 +1,77 @@
-import { onBeforeUnmount } from "vue";
+import { type Ref } from "vue";
 import Stats from "stats.js";
 
-export type UseFPSOptions = {
-  /** Виден ли FPS при инициализации */
-  visible?: boolean;
-  /** Позиционирование панели внутри контейнера */
-  position?: {
-    top?: string;
-    right?: string;
-    bottom?: string;
-    left?: string;
-  };
-  /** Какую панель показывать (0 – FPS, 1 – MS, 2 – MB) */
-  panel?: 0 | 1 | 2;
-};
+type FpsPosition = Partial<Record<"top" | "right" | "bottom" | "left", string>>;
 
-export function useFPS(
-  container: HTMLElement,
-  { visible = true, position, panel = 2 }: UseFPSOptions = {}
-) {
-  const stats = new Stats();
-  stats.showPanel(panel);
+export function useFPS(containerRef: Ref<HTMLElement | null | undefined>) {
+  let stats: Stats | null = null;
+  let rafId: number | null = null;
+  let attached = false;
 
-  // Если у контейнера position: static, сделаем его позиционированным,
-  // чтобы абсолютный FPS-панель корректно якорилась внутри него.
-  try {
-    const cs = getComputedStyle(container);
-    if (cs.position === "static") {
-      container.style.position = "relative";
-    }
-  } catch {}
-
-  // Базовые стили контейнера панели
-  const style = stats.dom.style as CSSStyleDeclaration;
-  style.position = "absolute";
-  style.zIndex = "1000";
-  style.pointerEvents = "none"; // не перехватывать клики по вьюеру
-  style.opacity = "0.9";
-
-  // Сброс дефолтных углов от stats.js (обычно left: 0, top: 0)
-  style.top = "";
-  style.right = "";
-  style.bottom = "";
-  style.left = "";
-
-  // Позиционирование (правый верх по умолчанию)
-  const hasTop = position?.top != null;
-  const hasBottom = position?.bottom != null;
-  const hasLeft = position?.left != null;
-  const hasRight = position?.right != null;
-
-  if (hasTop) style.top = position!.top!;
-  if (hasBottom) style.bottom = position!.bottom!;
-  if (!hasTop && !hasBottom) style.top = "8px";
-
-  if (hasRight) {
-    style.right = position!.right!;
-    style.left = ""; // взаимоисключаем противоположный край
+  function ensureStats() {
+    if (!stats) stats = new Stats();
   }
-  if (hasLeft) {
-    style.left = position!.left!;
-    style.right = ""; // взаимоисключаем противоположный край
-  }
-  if (!hasLeft && !hasRight) style.right = "8px";
 
-  let raf = 0;
-  let running = false;
-
-  const tick = () => {
-    if (!running) return;
-    stats.update();
-    raf = requestAnimationFrame(tick);
-  };
-
-  const mount = () => {
-    try {
-      container.appendChild(stats.dom);
-    } catch (e) {
-      console.warn("useFPS: cannot mount stats panel", e);
+  function attach() {
+    if (attached) return;
+    ensureStats();
+    const el = containerRef.value;
+    if (el && stats) {
+      el.appendChild(stats.dom);
+      attached = true;
     }
-  };
+  }
 
-  const start = () => {
-    if (running) return;
-    running = true;
-    tick();
-  };
+  function detach() {
+    if (!attached || !stats) return;
+    stats.dom.parentElement?.removeChild(stats.dom);
+    attached = false;
+  }
 
-  const stop = () => {
-    running = false;
-    if (raf) cancelAnimationFrame(raf);
-    raf = 0;
-  };
+  function start() {
+    ensureStats();
+    if (rafId != null) return;
+    const loop = () => {
+      stats?.begin();
+      stats?.end();
+      rafId = window.requestAnimationFrame(loop);
+    };
+    rafId = window.requestAnimationFrame(loop);
+  }
 
-  const setVisible = (v: boolean) => {
-    stats.dom.style.display = v ? "" : "none";
-    if (v) start();
-    else stop();
-  };
+  function stop() {
+    if (rafId != null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
 
-  const dispose = () => {
+  function setPanel(panel: 0 | 1 | 2) {
+    ensureStats();
+    stats?.showPanel(panel);
+  }
+
+  function setPosition(pos: FpsPosition) {
+    ensureStats();
+    if (!stats) return;
+    const style = stats.dom.style;
+    style.position = "absolute";
+    style.top = "";
+    style.right = "";
+    style.bottom = "";
+    style.left = "";
+    if (pos.top) style.top = pos.top;
+    if (pos.right) style.right = pos.right;
+    if (pos.bottom) style.bottom = pos.bottom;
+    if (pos.left) style.left = pos.left;
+    style.zIndex = "10";
+  }
+
+  function dispose() {
     stop();
-    try {
-      stats.dom.remove();
-    } catch {}
-  };
+    detach();
+    stats = null;
+  }
 
-  // Автоинициализация
-  mount();
-  setVisible(visible);
-
-  onBeforeUnmount(dispose);
-
-  return { el: stats.dom, setVisible, start, stop, dispose } as const;
+  return { attach, detach, start, stop, setPanel, setPosition, dispose };
 }
