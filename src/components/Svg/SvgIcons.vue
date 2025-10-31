@@ -62,8 +62,8 @@
 
 <script setup lang="ts">
 interface Props {
-  icon: string;
+  icon: string
 }
 
-defineProps<Props>();
+defineProps<Props>()
 </script>

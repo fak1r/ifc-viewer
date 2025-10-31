@@ -1,0 +1,8 @@
+export default {
+  singleQuote: true,
+  semi: false,
+  tabWidth: 2,
+  trailingComma: 'all',
+  endOfLine: 'crlf',
+  printWidth: 120,
+}

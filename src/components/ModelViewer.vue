@@ -1,50 +1,37 @@
 <script setup lang="ts">
-import {
-  onMounted,
-  onBeforeUnmount,
-  ref,
-  watch,
-  toRefs,
-  shallowRef,
-  computed,
-  nextTick,
-} from "vue";
-import * as OBC from "@thatopen/components";
-import type {
-  ModelViewerConfig,
-  ModelSource,
-  ToolApi,
-} from "@/types/ifc-viewer";
-import { useWorld } from "@/composables/useWorld";
-import { useCamera } from "@/composables/useCamera";
-import { useGrid } from "@/composables/useGrid";
-import { useFragments } from "@/composables/useFragments";
-import { useIfcLoader } from "@/composables/useIfcLoader";
-import { useBackground } from "@/composables/useBackground";
-import { useAreaMeasurement } from "@/composables/measure/useAreaMeasurement";
-import { useLengthMeasurement } from "@/composables/measure/useLengthMeasurement";
-import { useMeasurementRouter } from "@/composables/measure/useMeasurementRouter";
-import { useMeasurementPanels } from "@/composables/measure/useMeasurementPanels";
-import { useViewerFPS } from "@/composables/FPS/useViewerFPS";
-import MeasurePanel from "@/components/MeasurePanel.vue";
+import { onMounted, onBeforeUnmount, ref, watch, toRefs, shallowRef, computed, nextTick } from 'vue'
+import * as OBC from '@thatopen/components'
+import type { ModelViewerConfig, ModelSource, ToolApi } from '@/types/ifc-viewer'
+import { useWorld } from '@/composables/useWorld'
+import { useCamera } from '@/composables/useCamera'
+import { useGrid } from '@/composables/useGrid'
+import { useFragments } from '@/composables/useFragments'
+import { useIfcLoader } from '@/composables/useIfcLoader'
+import { useBackground } from '@/composables/useBackground'
+import { useAreaMeasurement } from '@/composables/measure/useAreaMeasurement'
+import { useLengthMeasurement } from '@/composables/measure/useLengthMeasurement'
+import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter'
+import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
+import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
+import MeasurePanel from '@/components/MeasurePanel.vue'
 
 interface Props {
-  config: ModelViewerConfig;
+  config: ModelViewerConfig
   measurePanelsVisibility: {
-    square: boolean;
-    linear: boolean;
-  };
+    square: boolean
+    linear: boolean
+  }
 }
 
-const props = defineProps<Props>();
+const props = defineProps<Props>()
 
-const { config } = toRefs(props);
+const { config } = toRefs(props)
 
-const containerRef = ref<HTMLDivElement | null>(null);
+const containerRef = ref<HTMLDivElement | null>(null)
 
-const components = shallowRef<OBC.Components | null>(null);
-const world = shallowRef<OBC.World | null>(null);
-let cam: ReturnType<typeof useCamera>;
+const components = shallowRef<OBC.Components | null>(null)
+const world = shallowRef<OBC.World | null>(null)
+let cam: ReturnType<typeof useCamera>
 
 const {
   state: areaState,
@@ -54,7 +41,7 @@ const {
   start: startArea,
   finishMeasurement: finishArea,
   clearMeasurement: clearArea,
-} = useAreaMeasurement({ components, world });
+} = useAreaMeasurement({ components, world })
 
 const {
   state: lengthState,
@@ -64,7 +51,7 @@ const {
   start: startLength,
   finishMeasurement: finishLength,
   clearMeasurement: clearLength,
-} = useLengthMeasurement({ components, world });
+} = useLengthMeasurement({ components, world })
 
 const { setActive } = useMeasurementRouter({
   container: containerRef,
@@ -82,173 +69,161 @@ const { setActive } = useMeasurementRouter({
       clearMeasurement: clearLength,
     },
   },
-});
+})
 
-let measurementsInited = false;
+let measurementsInited = false
 
-let disposeWorld: (() => void) | undefined;
-let disposeGrid: (() => void) | undefined;
-let disposeStats: (() => void) | undefined;
-let disposeFragments: (() => void) | undefined;
-let ifc: ReturnType<typeof useIfcLoader> | undefined;
+let disposeWorld: (() => void) | undefined
+let disposeGrid: (() => void) | undefined
+let disposeStats: (() => void) | undefined
+let disposeFragments: (() => void) | undefined
+let ifc: ReturnType<typeof useIfcLoader> | undefined
 
-const depsReady = computed(() => !!components.value && !!world.value);
+const depsReady = computed(() => !!components.value && !!world.value)
 
 async function loadModel(source: ModelSource) {
-  if (!ifc) throw new Error("Viewer is not ready yet");
+  if (!ifc) throw new Error('Viewer is not ready yet')
   await ifc.load(source, {
-    name:
-      typeof source === "string" ? source.split("/").pop() || "model" : "model",
+    name: typeof source === 'string' ? source.split('/').pop() || 'model' : 'model',
     liftBy: config.value.liftBy ?? 0,
     autoFit: config.value.autoFit ?? false,
-  });
-  await ifc.groundToGrid(
-    config.value.gridOffset ?? 0,
-    config.value.liftBy ?? 0
-  );
+  })
+  await ifc.groundToGrid(config.value.gridOffset ?? 0, config.value.liftBy ?? 0)
   // центрируем по XZ в (0, 0); если нужно по левому краю — меняем режим на "min"
-  await ifc.alignHorizontally(0, 0, "center");
+  await ifc.alignHorizontally(0, 0, 'center')
   // камера смотрит ровно на (0,0,0), дистанция по размеру модели
-  await cam.lookAtOrigin();
+  await cam.lookAtOrigin()
 }
 
 function clear() {
-  ifc?.clear();
+  ifc?.clear()
 }
 
-async function handlePanelToggle(
-  visible: boolean,
-  api: ToolApi,
-  depsReady: boolean
-) {
-  if (!depsReady) return; // мир ещё не готов — ждём следующего прохода
+async function handlePanelToggle(visible: boolean, api: ToolApi, depsReady: boolean) {
+  if (!depsReady) return // мир ещё не готов — ждём следующего прохода
 
   if (visible) {
-    await nextTick();
-    api.setupMeasurement?.(); // лениво инициализируем (без дублей)
-    api.activateMeasurement(api.state.enabled); // синхронизация с чекбоксом
+    await nextTick()
+    api.setupMeasurement?.() // лениво инициализируем (без дублей)
+    api.activateMeasurement(api.state.enabled) // синхронизация с чекбоксом
   } else {
-    if (api.state.ready) api.activateMeasurement(false); // мягкое выключение
+    if (api.state.ready) api.activateMeasurement(false) // мягкое выключение
   }
 }
 
-defineExpose({ loadModel, clear });
+defineExpose({ loadModel, clear })
 
 // Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
 onMounted(async () => {
-  if (!containerRef.value) return;
+  if (!containerRef.value) return
 
   // Создаём базовый мир (сцена, рендерер, камера)
-  const created = useWorld(containerRef.value);
-  components.value = created.components;
-  world.value = created.world;
-  disposeWorld = created.dispose;
+  const created = useWorld(containerRef.value)
+  components.value = created.components
+  world.value = created.world
+  disposeWorld = created.dispose
 
   // Инициализируем камеру (если есть lookAt)
-  cam = useCamera(components.value!, world.value!);
+  cam = useCamera(components.value!, world.value!)
   if (config.value.lookAt) {
-    const { eye, target } = config.value.lookAt;
-    await cam.setLookAt(eye, target);
+    const { eye, target } = config.value.lookAt
+    await cam.setLookAt(eye, target)
   }
 
   // Цвет фона
-  useBackground(world.value!, config.value.background ?? "#0e0e11");
+  useBackground(world.value!, config.value.background ?? '#0e0e11')
 
   // Сетка (опционально)
   if (config.value.showGrid) {
-    disposeGrid = useGrid(
-      components.value!,
-      world.value!,
-      config.value.gridOffset ?? 0
-    );
+    disposeGrid = useGrid(components.value!, world.value!, config.value.gridOffset ?? 0)
   }
 
   // Менеджер фрагментов: воркер + хуки к сцене
-  const frags = useFragments(components.value!, world.value!);
-  disposeFragments = frags.dispose;
+  const frags = useFragments(components.value!, world.value!)
+  disposeFragments = frags.dispose
 
   // IFC Loader (путь/версия web-ifc wasm)
-  ifc = useIfcLoader(components.value!, frags, config.value.wasm);
-  await ifc.setup();
+  ifc = useIfcLoader(components.value!, frags, config.value.wasm)
+  await ifc.setup()
 
   // Загрузка модели, если она указана в пропсах
   if (config.value.model) {
     try {
-      await loadModel(config.value.model);
+      await loadModel(config.value.model)
     } catch (err) {
-      console.error("Failed to autoload model:", err);
+      console.error('Failed to autoload model:', err)
     }
   }
-});
+})
 
 onBeforeUnmount(() => {
   // Выключить измерители
   try {
-    activateArea?.(false);
+    activateArea?.(false)
   } catch {}
   try {
-    activateLength?.(false);
+    activateLength?.(false)
   } catch {}
 
   // Очистить мир
   try {
-    ifc?.clear?.();
+    ifc?.clear?.()
   } catch {}
   try {
-    disposeFragments?.();
+    disposeFragments?.()
   } catch {}
   try {
-    disposeStats?.();
+    disposeStats?.()
   } catch {}
   try {
-    disposeGrid?.();
+    disposeGrid?.()
   } catch {}
   try {
-    disposeWorld?.();
+    disposeWorld?.()
   } catch {}
-});
+})
 
 watch(
   () => config.value.background,
   (bg) => {
-    if (bg && world.value) useBackground(world.value, bg);
-  }
-);
+    if (bg && world.value) useBackground(world.value, bg)
+  },
+)
 
 watch(
   () => [config.value.gridOffset, config.value.liftBy] as const,
-  ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0)
-);
+  ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0),
+)
 
 // Включаем измерения при появлении панели
 watch(
   () => props.measurePanelsVisibility?.square,
   (v) => {
-    if (v) setActive("area");
+    if (v) setActive('area')
   },
-  { immediate: true }
-);
+  { immediate: true },
+)
 
 watch(
   () => props.measurePanelsVisibility?.linear,
   (v) => {
-    if (v) setActive("length");
+    if (v) setActive('length')
   },
-  { immediate: true }
-);
+  { immediate: true },
+)
 
 watch(
   [() => components.value, () => world.value],
   async ([c, w]) => {
     if (!measurementsInited && c && w) {
-      await nextTick();
-      areaSetupMeasurement?.();
-      lengthSetupMeasurement?.();
-      measurementsInited = true;
+      await nextTick()
+      areaSetupMeasurement?.()
+      lengthSetupMeasurement?.()
+      measurementsInited = true
     }
   },
-  { immediate: true }
-);
+  { immediate: true },
+)
 
 // Управляет жизненным циклом измерителей (setup/вкл/выкл, depsReady).
 useMeasurementPanels({
@@ -265,9 +240,9 @@ useMeasurementPanels({
     state: lengthState,
   },
   handlePanelToggle,
-});
+})
 
-useViewerFPS(containerRef);
+useViewerFPS(containerRef)
 </script>
 
 <template>

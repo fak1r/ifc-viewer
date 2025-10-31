@@ -1,97 +1,89 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed } from 'vue'
 
 interface MeasureState {
-  enabled: boolean;
-  visible: boolean;
-  color: string;
-  modes: string[];
-  mode: string;
-  unitsList: string[];
-  units: string;
-  rounding: number;
+  enabled: boolean
+  visible: boolean
+  color: string
+  modes: string[]
+  mode: string
+  unitsList: string[]
+  units: string
+  rounding: number
 }
 
 interface Props {
-  state: MeasureState;
-  variant?: "area" | "length";
-  top?: number;
+  state: MeasureState
+  variant?: 'area' | 'length'
+  top?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  variant: "area",
+  variant: 'area',
   top: 48,
-});
+})
 
 interface Emit {
-  "toggle:enabled": [value: boolean];
-  "toggle:visible": [value: boolean];
-  "change:color": [value: string];
-  "change:mode": [value: string];
-  "change:units": [value: string];
-  "change:rounding": [value: number];
-  "action:start": [];
-  "action:finishMeasurement": [];
-  "action:clearMeasurement": [];
+  'toggle:enabled': [value: boolean]
+  'toggle:visible': [value: boolean]
+  'change:color': [value: string]
+  'change:mode': [value: string]
+  'change:units': [value: string]
+  'change:rounding': [value: number]
+  'action:start': []
+  'action:finishMeasurement': []
+  'action:clearMeasurement': []
 }
 
-const emit = defineEmits<Emit>();
+const emit = defineEmits<Emit>()
 
 const rounding = computed({
   get: () => props.state.rounding,
   set(v: number) {
-    emit("change:rounding", v);
+    emit('change:rounding', v)
   },
-});
+})
 
 function onToggleEnabled(e: Event) {
-  emit("toggle:enabled", (e.target as HTMLInputElement).checked);
+  emit('toggle:enabled', (e.target as HTMLInputElement).checked)
 }
 
 function onToggleVisible(e: Event) {
-  emit("toggle:visible", (e.target as HTMLInputElement).checked);
+  emit('toggle:visible', (e.target as HTMLInputElement).checked)
 }
 
 function onChangeColor(e: Event) {
-  emit("change:color", (e.target as HTMLInputElement).value);
+  emit('change:color', (e.target as HTMLInputElement).value)
 }
 
 function onChangeMode(e: Event) {
-  emit("change:mode", (e.target as HTMLSelectElement).value);
+  emit('change:mode', (e.target as HTMLSelectElement).value)
 }
 
 function onChangeUnits(e: Event) {
-  emit("change:units", (e.target as HTMLSelectElement).value);
+  emit('change:units', (e.target as HTMLSelectElement).value)
 }
 
 function finishMeasurement() {
-  emit("action:finishMeasurement");
+  emit('action:finishMeasurement')
 }
 
 function clearMeasurement() {
-  emit("action:clearMeasurement");
+  emit('action:clearMeasurement')
 }
 
-const panelStyle = computed(() => ({ top: `${props.top}px` }));
+const panelStyle = computed(() => ({ top: `${props.top}px` }))
 </script>
 
 <template>
   <div class="measure-panel" :style="panelStyle">
     <div class="row">
       <label>
-        <input
-          type="checkbox"
-          :checked="state.enabled"
-          @change="onToggleEnabled"
-        />
+        <input type="checkbox" :checked="state.enabled" @change="onToggleEnabled" />
         Включить измерения
       </label>
       <label>
-        <input
-          type="checkbox"
-          :checked="state.visible"
-          @change="onToggleVisible"
-        />
+        <input type="checkbox" :checked="state.visible" @change="onToggleVisible" />
         Показывать линии
       </label>
     </div>
@@ -127,9 +119,7 @@ const panelStyle = computed(() => ({ top: `${props.top}px` }));
     <div class="row">
       <div>Создать точку (Двойной клик)</div>
       <button @click="finishMeasurement">Закончить измерения (Enter)</button>
-      <button class="danger" @click="clearMeasurement">
-        Удалить измерения (Del)
-      </button>
+      <button class="danger" @click="clearMeasurement">Удалить измерения (Del)</button>
     </div>
   </div>
 </template>

@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { useModelLoadingProgress } from "@/composables/useModelLoadingProgress";
+import { computed } from 'vue'
+import { useModelLoadingProgress } from '@/composables/useModelLoadingProgress'
 
-const { visible, percent } = useModelLoadingProgress();
+const { visible, percent } = useModelLoadingProgress()
 
-const percentInt = computed(() =>
-  Math.round(Math.max(0, Math.min(100, percent.value)))
-);
-const width = computed(() => `${percentInt.value}%`);
-const label = computed(() => `${percentInt.value}%`);
+const percentInt = computed(() => Math.round(Math.max(0, Math.min(100, percent.value))))
+const width = computed(() => `${percentInt.value}%`)
+const label = computed(() => `${percentInt.value}%`)
 </script>
 
 <template>
