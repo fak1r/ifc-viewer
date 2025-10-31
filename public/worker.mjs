@@ -9092,15 +9092,13 @@ function ca(t, e, s, i, r = null) {
 }
 const ua = 32,
   da = (t, e) => t.candidate - e.candidate,
-  pa = new Array(ua)
-    .fill()
-    .map(() => ({
-      count: 0,
-      bounds: new Float32Array(6),
-      rightCacheBounds: new Float32Array(6),
-      leftCacheBounds: new Float32Array(6),
-      candidate: 0,
-    })),
+  pa = new Array(ua).fill().map(() => ({
+    count: 0,
+    bounds: new Float32Array(6),
+    rightCacheBounds: new Float32Array(6),
+    leftCacheBounds: new Float32Array(6),
+    candidate: 0,
+  })),
   fa = new Float32Array(6)
 class ma {
   constructor() {}
