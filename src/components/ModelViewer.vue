@@ -13,6 +13,7 @@ import { useLengthMeasurement } from '@/composables/measure/useLengthMeasurement
 import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter'
 import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
+import { useClipper } from '@/composables/clipper/useClipper'
 import MeasurePanel from '@/components/MeasurePanel.vue'
 
 interface Props {
@@ -122,6 +123,12 @@ onMounted(async () => {
   components.value = created.components
   world.value = created.world
   disposeWorld = created.dispose
+
+  // Режущая плоскость
+  const clipper = useClipper({ world: world.value })
+  clipper.enable()
+  // clipper.setSingleVerticalCutAtX(0)
+  clipper.setSingleHorizontalCutAtY(3)
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)
