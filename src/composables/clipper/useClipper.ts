@@ -19,6 +19,9 @@ export function useClipper({ world }: UseClipperOptions) {
   const planes: THREE.Plane[] = []
   let enabled = false
 
+  let currentY: number | null = null
+  let currentX: number | null = null
+
   const apply = () => {
     renderer.clippingPlanes = planes
     renderer.localClippingEnabled = enabled
@@ -43,6 +46,7 @@ export function useClipper({ world }: UseClipperOptions) {
   const addVerticalPlaneAtX = (x0: number) => {
     const plane = new THREE.Plane(new THREE.Vector3(1, 0, 0), -x0)
     planes.push(plane)
+    currentX = x0
     apply()
     return plane
   }
@@ -50,6 +54,7 @@ export function useClipper({ world }: UseClipperOptions) {
   const addHorizontalPlaneAtY = (y0: number) => {
     const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), y0)
     planes.push(plane)
+    currentY = y0
     apply()
     return plane
   }
@@ -57,11 +62,13 @@ export function useClipper({ world }: UseClipperOptions) {
   const setSingleVerticalCutAtX = (x0: number) => {
     planes.length = 0
     addVerticalPlaneAtX(x0)
+    currentX = x0
   }
 
   const setSingleHorizontalCutAtY = (y0: number) => {
     planes.length = 0
     addHorizontalPlaneAtY(y0)
+    currentY = y0
   }
 
   return {
@@ -70,6 +77,12 @@ export function useClipper({ world }: UseClipperOptions) {
     },
     get planes() {
       return planes as readonly THREE.Plane[]
+    },
+    get currentY() {
+      return currentY
+    },
+    get currentX() {
+      return currentX
     },
 
     enable,
