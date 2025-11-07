@@ -14,7 +14,7 @@ import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter
 import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
 import { useClipper } from '@/composables/clipper/useClipper'
-// import { useClipStyler } from '@/composables/clipper/useClipStyler'
+import { useClipStyler } from '@/composables/clipper/useClipStyler'
 import MeasurePanel from '@/components/MeasurePanel.vue'
 
 interface Props {
@@ -136,6 +136,17 @@ onMounted(async () => {
     initial: 5,
   })
   clipper.enable()
+
+  // Чёрная обводка среза (ClipStyler)
+  const styler = useClipStyler({
+    world: {
+      components: components.value!,
+      world: world.value!,
+      container: containerRef.value!,
+    },
+    lineWidth: 2,
+  })
+  console.log('[ModelViewer] useClipStyler created:', { styler: !!styler })
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)
