@@ -126,10 +126,16 @@ onMounted(async () => {
   disposeWorld = created.dispose
 
   // Режущая плоскость
-  const clipper = useClipper({ world: world.value })
+  const clipper = useClipper({
+    world: {
+      components: components.value!,
+      world: world.value!,
+      container: containerRef.value!,
+    },
+    orientation: 'horizontal',
+    initial: 5,
+  })
   clipper.enable()
-  // clipper.setSingleVerticalCutAtX(0)
-  clipper.setSingleHorizontalCutAtY(3)
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)
