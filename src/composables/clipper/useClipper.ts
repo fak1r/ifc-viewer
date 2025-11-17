@@ -31,7 +31,7 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
   let currentY: number | null = null
   let currentX: number | null = null
 
-  const createPlaneAt = async (value: number) => {
+  async function createPlaneAt(value: number) {
     if (orientation === 'vertical') {
       clipper.createFromNormalAndCoplanarPoint(obcWorld, new THREE.Vector3(-1, 0, 0), new THREE.Vector3(value, 0, 0))
     } else {
@@ -39,7 +39,7 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     }
   }
 
-  const movePlaneTo = async (value: number) => {
+  async function movePlaneTo(value: number) {
     clipper.deleteAll()
     if (orientation === 'vertical') {
       currentX = value
@@ -56,25 +56,35 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     else currentY = initial
   })
 
-  const setSingleVerticalCutAtX = (x0: number) => {
+  function setSingleVerticalCutAtX(x0: number) {
     void movePlaneTo(x0)
   }
-  const setSingleHorizontalCutAtY = (y0: number) => {
+  function setSingleHorizontalCutAtY(y0: number) {
     void movePlaneTo(y0)
   }
 
-  const enable = () => {
+  function enable() {
     clipper.enabled = true
     enabled = true
+
+    movePlaneTo(initial)
   }
-  const disable = () => {
+  function disable() {
     clipper.enabled = false
     enabled = false
+    clipper.deleteAll()
   }
-  const clear = () => {
+  function clear() {
     clipper.deleteAll()
     currentX = null
     currentY = null
+  }
+  function toggle() {
+    if (enabled) {
+      disable()
+    } else {
+      enable()
+    }
   }
 
   return {
@@ -91,7 +101,7 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     enable,
     disable,
     clear,
-
+    toggle,
     setSingleVerticalCutAtX,
     setSingleHorizontalCutAtY,
   }

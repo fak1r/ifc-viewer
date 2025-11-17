@@ -13,7 +13,7 @@ import { useLengthMeasurement } from '@/composables/measure/useLengthMeasurement
 import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter'
 import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
-import { useClipper } from '@/composables/clipper/useClipper'
+import { useClipper, type UseClipper } from '@/composables/clipper/useClipper'
 import { useClipStyler } from '@/composables/clipper/useClipStyler'
 import MeasurePanel from '@/components/MeasurePanel.vue'
 
@@ -34,6 +34,7 @@ const containerRef = ref<HTMLDivElement | null>(null)
 const components = shallowRef<OBC.Components | null>(null)
 const world = shallowRef<OBC.World | null>(null)
 let cam: ReturnType<typeof useCamera>
+const clipper = ref<UseClipper | null>(null)
 
 const {
   state: areaState,
@@ -101,6 +102,10 @@ function clear() {
   ifc?.clear()
 }
 
+function toggleClipper() {
+  clipper.value?.toggle()
+}
+
 async function handlePanelToggle(visible: boolean, api: ToolApi, depsReady: boolean) {
   if (!depsReady) return // мир ещё не готов — ждём следующего прохода
 
@@ -113,7 +118,7 @@ async function handlePanelToggle(visible: boolean, api: ToolApi, depsReady: bool
   }
 }
 
-defineExpose({ loadModel, clear })
+defineExpose({ loadModel, clear, toggleClipper })
 
 // Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
 onMounted(async () => {
@@ -126,7 +131,7 @@ onMounted(async () => {
   disposeWorld = created.dispose
 
   // Режущая плоскость
-  const clipper = useClipper({
+  clipper.value = useClipper({
     world: {
       components: components.value!,
       world: world.value!,
@@ -135,7 +140,7 @@ onMounted(async () => {
     orientation: 'horizontal',
     initial: 5,
   })
-  clipper.enable()
+  clipper.value.enable()
 
   // Чёрная обводка среза (ClipStyler)
   const styler = useClipStyler({

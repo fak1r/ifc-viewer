@@ -20,13 +20,17 @@ const viewerRef = ref<InstanceType<typeof ModelViewer> | null>(null)
 function toggleVisibleMeasure(name: 'square' | 'linear') {
   if (name === 'square') {
     const next = !measurePanelsVisibility.square
-    measurePanelsVisibility.square = next // показать/скрыть Area
-    measurePanelsVisibility.linear = false // всегда гасим Length
+    measurePanelsVisibility.square = next
+    measurePanelsVisibility.linear = false
   } else {
     const next = !measurePanelsVisibility.linear
-    measurePanelsVisibility.linear = next // показать/скрыть Length
-    measurePanelsVisibility.square = false // всегда гасим Area
+    measurePanelsVisibility.linear = next
+    measurePanelsVisibility.square = false
   }
+}
+
+function toggleClipper() {
+  viewerRef.value?.toggleClipper()
 }
 
 async function handleFile(file: File) {
@@ -48,6 +52,9 @@ async function handleFile(file: File) {
         </button>
         <button @click="toggleVisibleMeasure('square')">
           <SvgIcons icon="square-measurement" />
+        </button>
+        <button @click="toggleClipper">
+          <SvgIcons icon="section-view" />
         </button>
       </div>
     </div>
