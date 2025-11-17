@@ -27,6 +27,25 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
   const clipper = components.get(OBC.Clipper)
   clipper.enabled = false
 
+  // Отслеживаем где находится плоскость среза
+  clipper.list.onItemSet.add(({ value }) => {
+    const plane = value as OBC.SimplePlane
+
+    plane.onDraggingEnded.add(() => {
+      plane.update()
+
+      const plane3 = plane.three
+
+      if (orientation === 'vertical') {
+        currentX = plane3.constant
+        currentY = null
+      } else {
+        currentY = plane3.constant
+        currentX = null
+      }
+    })
+  })
+
   let enabled = false
   let currentY: number | null = null
   let currentX: number | null = null
@@ -67,7 +86,8 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     clipper.enabled = true
     enabled = true
 
-    movePlaneTo(initial)
+    if (orientation === 'horizontal' && currentY !== null) movePlaneTo(currentY)
+    else if (orientation === 'vertical' && currentX !== null) movePlaneTo(currentX)
   }
   function disable() {
     clipper.enabled = false
