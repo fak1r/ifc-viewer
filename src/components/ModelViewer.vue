@@ -143,15 +143,13 @@ onMounted(async () => {
   clipper.value.enable()
 
   // Чёрная обводка среза (ClipStyler)
-  const styler = useClipStyler({
+  useClipStyler({
     world: {
       components: components.value!,
       world: world.value!,
       container: containerRef.value!,
     },
-    lineWidth: 2,
   })
-  console.log('[ModelViewer] useClipStyler created:', { styler: !!styler })
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)

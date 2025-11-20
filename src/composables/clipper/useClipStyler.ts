@@ -5,46 +5,63 @@ import * as OBF from '@thatopen/components-front'
 
 export type ClipStylerWorld = {
   components: OBC.Components
-  world: any // тип мира из useWorld()
+  world: OBC.World
   container: HTMLElement
 }
 
 export type UseClipStylerOptions = {
   world: ClipStylerWorld
-  lineWidth?: number
 }
 
-export function useClipStyler({ world, lineWidth = 2 }: UseClipStylerOptions) {
-  if (!world?.components || !world?.world || !world?.container) {
-    throw new Error('[useClipStyler] Передайте { components, world, container } из useWorld().')
-  }
+export function useClipStyler({ world }: UseClipStylerOptions) {
+  const { components, world: obcWorld } = world
 
-  const { components } = world
-
-  // Инициализируем ClipStyler и привязываем world (по докам)
   const clipStyler = components.get(OBF.ClipStyler)
-  clipStyler.world = world.world // :contentReference[oaicite:0]{index=0}
+  clipStyler.world = obcWorld as any
 
-  // Базовый стиль: только чёрные линии, без заливки (минимум опций)
-  clipStyler.styles.set('CutOutline', {
-    linesMaterial: new LineMaterial({ color: 'black', linewidth: lineWidth }), // :contentReference[oaicite:1]{index=1}
+  clipStyler.styles.set('Black', {
+    linesMaterial: new LineMaterial({
+      color: 'black',
+      linewidth: 2,
+    }),
+    fillsMaterial: new THREE.MeshBasicMaterial({
+      color: 'black',
+      side: 2,
+    }),
   })
 
-  // Линкуем плоскости клиппера к ClipStyler при их создании (по докам)
   const clipper = components.get(OBC.Clipper)
-  clipper.list.onItemSet.add(({ key }) => {
-    clipStyler.createFromClipping(key, {
-      items: { All: { style: 'CutOutline' } }, // :contentReference[oaicite:2]{index=2}
+  clipper.enabled = true
+
+  const createForPlane = (key: string) => {
+    const edges = clipStyler.createFromClipping(key, {
+      items: {
+        All: { style: 'Black' },
+      },
     })
+
+    console.log('[useClipStyler] created edges for plane', key, edges)
+
+    if (edges) {
+      edges.three.frustumCulled = false
+      for (const child of edges.three.children) {
+        child.frustumCulled = false
+      }
+    }
+  }
+
+  for (const [key] of clipper.list as any as Map<string, unknown>) {
+    console.log('[useClipStyler] initial plane in list:', key)
+    createForPlane(key)
+  }
+
+  ;(clipper.list as any).onItemSet?.add?.(({ key }: { key: string }) => {
+    console.log('[useClipStyler] onItemSet plane:', key)
+    createForPlane(key)
   })
 
-  // Минимальный API — доступ к экземпляру (на случай расширений)
   return {
-    get instance() {
-      return clipStyler
-    },
+    instance: clipStyler,
   }
 }
-
-export type UseClipStyler = ReturnType<typeof useClipStyler>
 
