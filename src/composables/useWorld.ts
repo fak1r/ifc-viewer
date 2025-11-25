@@ -13,9 +13,9 @@ export function useWorld(container: HTMLElement) {
   world.renderer = new OBF.PostproductionRenderer(components, container)
   world.camera = new OBC.OrthoPerspectiveCamera(components)
 
-  world.renderer.postproduction.enabled = true
+  // world.renderer.postproduction.enabled = true
   // world.renderer.postproduction.style = OBF.PostproductionAspect.COLOR_PEN
-  world.renderer.postproduction.style = OBF.PostproductionAspect.COLOR
+  // world.renderer.postproduction.style = OBF.PostproductionAspect.COLOR
 
   components.init()
 

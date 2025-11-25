@@ -117,6 +117,9 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     get currentX() {
       return currentX
     },
+    get obcClipper() {
+      return clipper
+    },
 
     enable,
     disable,
