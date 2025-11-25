@@ -3,8 +3,8 @@ import { reactive, ref } from 'vue'
 import ModelViewer from '@/components/ModelViewer.vue'
 import type { ModelViewerConfig } from '@/types/ifc-viewer'
 import SvgIcons from '@/components/Svg/SvgIcons.vue'
-import UploadModelButton from '@/components/UploadModelButton.vue'
-import LoadProgressBar from '@/components/LoadProgressBar.vue'
+import UploadModelButton from '@/components/UI/UploadModelButton.vue'
+import LoadProgressBar from '@/components/UI/LoadProgressBar.vue'
 
 const base = import.meta.env.BASE_URL || '/'
 

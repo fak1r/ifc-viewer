@@ -14,7 +14,7 @@ import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter
 import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
 import { useClipper, type UseClipper } from '@/composables/clipper/useClipper'
-import MeasurePanel from '@/components/MeasurePanel.vue'
+import MeasurePanel from '@/components/UI/MeasurePanel.vue'
 
 interface Props {
   config: ModelViewerConfig
