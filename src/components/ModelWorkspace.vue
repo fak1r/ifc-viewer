@@ -16,6 +16,7 @@ export interface viewerContext {
   components: OBC.Components
   world: World
   container: HTMLElement
+  fragmentsReady: Promise<unknown> | null
 }
 
 type ViewerInstance = InstanceType<typeof ModelViewer>
@@ -166,15 +167,6 @@ watch(
     }
   },
 )
-
-watch(
-  () => clipperPanelVisible.value,
-  (visible) => {
-    if (!visible) return
-    clipperEnabled.value = props.viewerRef?.isClipperEnabled?.() ?? clipperEnabled.value
-    clipperOrientation.value = props.viewerRef?.getClipperOrientation?.() ?? clipperOrientation.value
-  },
-)
 </script>
 
 <template>
@@ -272,4 +264,3 @@ watch(
   background: rgba(255, 255, 255, 0.1);
 }
 </style>
-

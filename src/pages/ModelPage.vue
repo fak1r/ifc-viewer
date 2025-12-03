@@ -16,7 +16,12 @@ const config: ModelViewerConfig = {
 const measurePanelsVisibility = reactive({ square: false, linear: false })
 const viewerRef = ref<InstanceType<typeof ModelViewer> | null>(null)
 
-type ViewerContext = { components: any; world: any; container: HTMLElement }
+type ViewerContext = {
+  components: any
+  world: any
+  container: HTMLElement
+  fragmentsReady: Promise<unknown> | null
+}
 const viewerContext = ref<ViewerContext | null>(null)
 const onReady = (v: ViewerContext) => {
   viewerContext.value = v
@@ -29,4 +34,3 @@ const onReady = (v: ViewerContext) => {
     <ModelWorkspace :viewer-context="viewerContext" :viewer-ref="viewerRef" />
   </ModelViewer>
 </template>
-

@@ -10,14 +10,10 @@ export type ClipperWorld = {
 export type UseClipperOptions = {
   world: ClipperWorld
   orientation?: 'vertical' | 'horizontal'
-  initial?: number
+  fragmentsReady?: Promise<unknown> | null
 }
 
-export function useClipper({
-  world,
-  orientation: initialOrientation = 'vertical',
-  initial = 0,
-}: UseClipperOptions) {
+export function useClipper({ world, orientation: initialOrientation = 'vertical', fragmentsReady }: UseClipperOptions) {
   if (!world?.components || !world?.world || !world?.container) {
     throw new Error('[useClipper] Передайте { components, world, container } из useWorld().')
   }
@@ -31,15 +27,22 @@ export function useClipper({
   const clipper = components.get(OBC.Clipper)
   clipper.enabled = false
 
+  let enabled = false
+  let currentY: number | null = null
+  let currentX: number | null = null
+  let orientation: 'vertical' | 'horizontal' = initialOrientation
+  let detachFragmentsListener: (() => void) | null = null
+
+  const bbox = new THREE.Box3()
+  const center = new THREE.Vector3()
+
   // Отслеживаем где находится плоскость среза
   clipper.list.onItemSet.add(({ value }) => {
     const plane = value as OBC.SimplePlane
 
     plane.onDraggingEnded.add(() => {
       plane.update()
-
       const plane3 = plane.three
-
       if (orientation === 'vertical') {
         currentX = plane3.constant
         currentY = null
@@ -49,12 +52,6 @@ export function useClipper({
       }
     })
   })
-
-  let enabled = false
-  let currentY: number | null = null
-  let currentX: number | null = null
-
-  let orientation: 'vertical' | 'horizontal' = initialOrientation
 
   async function createPlaneAt(value: number) {
     if (orientation === 'vertical') {
@@ -76,24 +73,17 @@ export function useClipper({
     await createPlaneAt(value)
   }
 
-  void createPlaneAt(initial).then(() => {
-    if (orientation === 'vertical') currentX = initial
-    else currentY = initial
-  })
-
-  function setSingleVerticalCutAtX(x0: number) {
-    void movePlaneTo(x0)
-  }
-  function setSingleHorizontalCutAtY(y0: number) {
-    void movePlaneTo(y0)
+  async function ensurePlane() {
+    if (currentX !== null || currentY !== null) return
+    await centerOnModel()
   }
 
-  function enable() {
+  async function enable() {
     clipper.enabled = true
     enabled = true
-
-    if (orientation === 'horizontal' && currentY !== null) movePlaneTo(currentY)
-    else if (orientation === 'vertical' && currentX !== null) movePlaneTo(currentX)
+    await ensurePlane()
+    if (orientation === 'horizontal' && currentY !== null) await movePlaneTo(currentY)
+    else if (orientation === 'vertical' && currentX !== null) await movePlaneTo(currentX)
   }
   function disable() {
     clipper.enabled = false
@@ -109,7 +99,7 @@ export function useClipper({
     if (enabled) {
       disable()
     } else {
-      enable()
+      void enable()
     }
   }
 
@@ -120,14 +110,74 @@ export function useClipper({
     currentX = null
     currentY = null
     if (enabled) {
-      clipper.enabled = true
-      await createPlaneAt(initial)
-      if (orientation === 'vertical') currentX = initial
-      else currentY = initial
-    } else {
-      clipper.enabled = false
+      await centerOnModel()
     }
   }
+
+  async function centerOnModel() {
+    if (fragmentsReady) {
+      try {
+        await fragmentsReady
+      } catch {
+        return
+      }
+    }
+
+    let fm: OBC.FragmentsManager | null = null
+    try {
+      fm = components.get(OBC.FragmentsManager)
+    } catch {
+      return
+    }
+
+    if (!fm?.list?.size) return
+
+    bbox.makeEmpty()
+    for (const frag of fm.list.values()) bbox.expandByObject(frag.object)
+    if (!Number.isFinite(bbox.min.y)) return
+
+    bbox.getCenter(center)
+    const value = orientation === 'horizontal' ? center.y : center.x
+    if (enabled) {
+      await movePlaneTo(value)
+    } else {
+      if (orientation === 'horizontal') {
+        currentY = value
+        currentX = null
+      } else {
+        currentX = value
+        currentY = null
+      }
+      clipper.deleteAll()
+    }
+  }
+
+  function setupFragmentsListener() {
+    if (fragmentsReady) {
+      fragmentsReady.then(() => attach()).catch(() => {})
+    } else {
+      attach()
+    }
+
+    function attach() {
+      let fm: OBC.FragmentsManager | null = null
+      try {
+        fm = components.get(OBC.FragmentsManager)
+      } catch {
+        return
+      }
+      if (!fm?.list?.onItemSet) return
+      const handler = () => void centerOnModel()
+      fm.list.onItemSet.add(handler)
+      detachFragmentsListener = () => {
+        try {
+          fm?.list?.onItemSet?.remove?.(handler)
+        } catch {}
+      }
+    }
+  }
+
+  setupFragmentsListener()
 
   return {
     get enabled() {
@@ -151,8 +201,10 @@ export function useClipper({
     clear,
     toggle,
     setOrientation,
-    setSingleVerticalCutAtX,
-    setSingleHorizontalCutAtY,
+    setSingleVerticalCutAtX: (x0: number) => void movePlaneTo(x0),
+    setSingleHorizontalCutAtY: (y0: number) => void movePlaneTo(y0),
+    centerOnModel,
+    detachFragmentsListener: () => detachFragmentsListener?.(),
   }
 }
 

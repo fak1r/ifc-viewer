@@ -22,7 +22,7 @@ interface Props {
 const props = defineProps<Props>()
 
 interface Emits {
-  (e: 'ready', v: { components: any; world: any; container: HTMLElement }): void
+  (e: 'ready', v: { components: any; world: any; container: HTMLElement; fragmentsReady: Promise<unknown> | null }): void
 }
 
 const emit = defineEmits<Emits>()
@@ -42,6 +42,7 @@ let disposeGrid: (() => void) | undefined
 let disposeStats: (() => void) | undefined
 let disposeFragments: (() => void) | undefined
 let ifc: ReturnType<typeof useIfcLoader> | undefined
+let fragmentsReady: Promise<unknown> | null = null
 
 async function loadModel(source: ModelSource) {
   if (!ifc) throw new Error('Viewer is not ready yet')
@@ -55,6 +56,7 @@ async function loadModel(source: ModelSource) {
   await ifc.alignHorizontally(0, 0, 'center')
   // камера смотрит ровно на (0,0,0), дистанция по размеру модели
   await cam.lookAtOrigin()
+  await clipper.value?.centerOnModel?.()
 }
 
 function clear() {
@@ -77,7 +79,15 @@ function getClipperOrientation() {
   return clipper.value?.orientation ?? 'horizontal'
 }
 
-defineExpose({ loadModel, clear, toggleClipper, isClipperEnabled, setClipperOrientation, getClipperOrientation })
+defineExpose({
+  loadModel,
+  clear,
+  toggleClipper,
+  isClipperEnabled,
+  setClipperOrientation,
+  getClipperOrientation,
+  fragmentsReady,
+})
 
 onMounted(async () => {
   if (!viewerRef.value) return
@@ -88,10 +98,10 @@ onMounted(async () => {
   world.value = created.world
   disposeWorld = created.dispose
 
-  // Когда компонент готов передаем данные для панели измерителей
-  if (viewerRef.value) {
-    emit('ready', { components, world, container: viewerRef.value })
-  }
+  // Менеджер фрагментов: воркер + хуки к сцене
+  const frags = useFragments(components.value!, world.value!)
+  fragmentsReady = frags.ready
+  disposeFragments = frags.dispose
 
   // Режущая плоскость
   clipper.value = useClipper({
@@ -101,9 +111,8 @@ onMounted(async () => {
       container: viewerRef.value!,
     },
     orientation: 'horizontal',
-    initial: 5,
+    fragmentsReady,
   })
-  clipper.value.enable()
 
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)
@@ -120,9 +129,10 @@ onMounted(async () => {
     disposeGrid = useGrid(components.value!, world.value!, config.value.gridOffset ?? 0)
   }
 
-  // Менеджер фрагментов: воркер + хуки к сцене
-  const frags = useFragments(components.value!, world.value!)
-  disposeFragments = frags.dispose
+  // Когда компонент готов передаем данные для панели измерителей
+  if (viewerRef.value) {
+    emit('ready', { components, world, container: viewerRef.value, fragmentsReady })
+  }
 
   // IFC Loader (путь/версия web-ifc wasm)
   ifc = useIfcLoader(components.value!, frags, config.value.wasm)
