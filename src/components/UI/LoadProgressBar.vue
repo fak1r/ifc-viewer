@@ -24,7 +24,7 @@ const label = computed(() => `${percentInt.value}%`)
 .loader {
   position: absolute;
   left: 50%;
-  top: 16px;
+  bottom: 16px;
   transform: translateX(-50%);
   z-index: 10;
 

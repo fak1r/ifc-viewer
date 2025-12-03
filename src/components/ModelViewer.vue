@@ -1,20 +1,15 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch, toRefs, shallowRef, computed, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch, toRefs, shallowRef } from 'vue'
 import * as OBC from '@thatopen/components'
-import type { ModelViewerConfig, ModelSource, ToolApi } from '@/types/ifc-viewer'
+import type { ModelViewerConfig, ModelSource } from '@/types/ifc-viewer'
 import { useWorld } from '@/composables/useWorld'
 import { useCamera } from '@/composables/useCamera'
 import { useGrid } from '@/composables/useGrid'
 import { useFragments } from '@/composables/useFragments'
 import { useIfcLoader } from '@/composables/useIfcLoader'
 import { useBackground } from '@/composables/useBackground'
-import { useAreaMeasurement } from '@/composables/measure/useAreaMeasurement'
-import { useLengthMeasurement } from '@/composables/measure/useLengthMeasurement'
-import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter'
-import { useMeasurementPanels } from '@/composables/measure/useMeasurementPanels'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
 import { useClipper, type UseClipper } from '@/composables/clipper/useClipper'
-import MeasurePanel from '@/components/UI/MeasurePanel.vue'
 
 interface Props {
   config: ModelViewerConfig
@@ -26,62 +21,27 @@ interface Props {
 
 const props = defineProps<Props>()
 
+interface Emits {
+  (e: 'ready', v: { components: any; world: any; container: HTMLElement }): void
+}
+
+const emit = defineEmits<Emits>()
+
 const { config } = toRefs(props)
 
-const containerRef = ref<HTMLDivElement | null>(null)
+const viewerRef = ref<HTMLDivElement | null>(null)
 
 const components = shallowRef<OBC.Components | null>(null)
 const world = shallowRef<OBC.World | null>(null)
+
 let cam: ReturnType<typeof useCamera>
 const clipper = ref<UseClipper | null>(null)
-
-const {
-  state: areaState,
-  setupMeasurement: areaSetupMeasurement,
-  updateMeasurementOptions: updateAreaOptions,
-  activateMeasurement: activateArea,
-  start: startArea,
-  finishMeasurement: finishArea,
-  clearMeasurement: clearArea,
-} = useAreaMeasurement({ components, world })
-
-const {
-  state: lengthState,
-  setupMeasurement: lengthSetupMeasurement,
-  updateMeasurementOptions: updateLengthOptions,
-  activateMeasurement: activateLength,
-  start: startLength,
-  finishMeasurement: finishLength,
-  clearMeasurement: clearLength,
-} = useLengthMeasurement({ components, world })
-
-const { setActive } = useMeasurementRouter({
-  container: containerRef,
-  tools: {
-    area: {
-      state: areaState,
-      start: startArea,
-      finishMeasurement: finishArea,
-      clearMeasurement: clearArea,
-    },
-    length: {
-      state: lengthState,
-      start: startLength,
-      finishMeasurement: finishLength,
-      clearMeasurement: clearLength,
-    },
-  },
-})
-
-let measurementsInited = false
 
 let disposeWorld: (() => void) | undefined
 let disposeGrid: (() => void) | undefined
 let disposeStats: (() => void) | undefined
 let disposeFragments: (() => void) | undefined
 let ifc: ReturnType<typeof useIfcLoader> | undefined
-
-const depsReady = computed(() => !!components.value && !!world.value)
 
 async function loadModel(source: ModelSource) {
   if (!ifc) throw new Error('Viewer is not ready yet')
@@ -105,36 +65,28 @@ function toggleClipper() {
   clipper.value?.toggle()
 }
 
-async function handlePanelToggle(visible: boolean, api: ToolApi, depsReady: boolean) {
-  if (!depsReady) return // мир ещё не готов — ждём следующего прохода
-
-  if (visible) {
-    await nextTick()
-    api.setupMeasurement?.() // лениво инициализируем (без дублей)
-    api.activateMeasurement(api.state.enabled) // синхронизация с чекбоксом
-  } else {
-    if (api.state.ready) api.activateMeasurement(false) // мягкое выключение
-  }
-}
-
 defineExpose({ loadModel, clear, toggleClipper })
 
-// Жизненный цикл: init/destroy (no async setup => no Suspense warnings)
 onMounted(async () => {
-  if (!containerRef.value) return
+  if (!viewerRef.value) return
 
   // Создаём базовый мир (сцена, рендерер, камера)
-  const created = useWorld(containerRef.value)
+  const created = useWorld(viewerRef.value)
   components.value = created.components
   world.value = created.world
   disposeWorld = created.dispose
+
+  // Когда компонент готов передаем данные для панели измерителей
+  if (viewerRef.value) {
+    emit('ready', { components, world, container: viewerRef.value })
+  }
 
   // Режущая плоскость
   clipper.value = useClipper({
     world: {
       components: components.value!,
       world: world.value!,
-      container: containerRef.value!,
+      container: viewerRef.value!,
     },
     orientation: 'horizontal',
     initial: 5,
@@ -175,14 +127,6 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  // Выключить измерители
-  try {
-    activateArea?.(false)
-  } catch {}
-  try {
-    activateLength?.(false)
-  } catch {}
-
   // Очистить мир
   try {
     ifc?.clear?.()
@@ -213,87 +157,11 @@ watch(
   ([gridOffset, liftBy]) => ifc?.groundToGrid(gridOffset ?? 0, liftBy ?? 0),
 )
 
-// Включаем измерения при появлении панели
-watch(
-  () => props.measurePanelsVisibility?.square,
-  (v) => {
-    if (v) setActive('area')
-  },
-  { immediate: true },
-)
-
-watch(
-  () => props.measurePanelsVisibility?.linear,
-  (v) => {
-    if (v) setActive('length')
-  },
-  { immediate: true },
-)
-
-watch(
-  [() => components.value, () => world.value],
-  async ([c, w]) => {
-    if (!measurementsInited && c && w) {
-      await nextTick()
-      areaSetupMeasurement?.()
-      lengthSetupMeasurement?.()
-      measurementsInited = true
-    }
-  },
-  { immediate: true },
-)
-
-// Управляет жизненным циклом измерителей (setup/вкл/выкл, depsReady).
-useMeasurementPanels({
-  panelsVisibility: computed(() => props.measurePanelsVisibility),
-  depsReady,
-  area: {
-    setupMeasurement: areaSetupMeasurement,
-    activateMeasurement: activateArea,
-    state: areaState,
-  },
-  length: {
-    setupMeasurement: lengthSetupMeasurement,
-    activateMeasurement: activateLength,
-    state: lengthState,
-  },
-  handlePanelToggle,
-})
-
-useViewerFPS(containerRef)
+useViewerFPS(viewerRef)
 </script>
 
 <template>
-  <div ref="containerRef" class="viewer">
-    <MeasurePanel
-      v-if="measurePanelsVisibility.square"
-      :state="areaState"
-      variant="area"
-      :top="48"
-      @toggle:enabled="(v: boolean) => activateArea(v)"
-      @toggle:visible="(v: boolean) => updateAreaOptions({ visible: v })"
-      @change:color="(v: string) => updateAreaOptions({ color: v })"
-      @change:mode="(v: string) => updateAreaOptions({ mode: v })"
-      @change:units="(v: string) => updateAreaOptions({ units: v })"
-      @change:rounding="(v: number) => updateAreaOptions({ rounding: v })"
-      @action:start="startArea"
-      @action:finishMeasurement="finishArea"
-      @action:clearMeasurement="clearArea"
-    />
-    <MeasurePanel
-      v-if="measurePanelsVisibility.linear"
-      :state="lengthState"
-      variant="length"
-      :top="218"
-      @toggle:enabled="(v: boolean) => activateLength(v)"
-      @toggle:visible="(v: boolean) => updateLengthOptions({ visible: v })"
-      @change:color="(v: string) => updateLengthOptions({ color: v })"
-      @change:mode="(v: string) => updateLengthOptions({ mode: v })"
-      @change:units="(v: string) => updateLengthOptions({ units: v })"
-      @change:rounding="(v: number) => updateLengthOptions({ rounding: v })"
-      @action:finishMeasurement="finishLength"
-      @action:clearMeasurement="clearLength"
-    />
+  <div ref="viewerRef" class="viewer">
     <slot />
   </div>
 </template>

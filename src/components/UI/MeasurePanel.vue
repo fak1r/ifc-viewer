@@ -137,6 +137,7 @@ const panelStyle = computed(() => ({ top: `${props.top}px` }))
   min-width: 280px;
   max-width: 400px;
   font-size: 12px;
+  pointer-events: auto;
 }
 
 .row {
