@@ -13,7 +13,11 @@ export type UseClipperOptions = {
   initial?: number
 }
 
-export function useClipper({ world, orientation = 'vertical', initial = 0 }: UseClipperOptions) {
+export function useClipper({
+  world,
+  orientation: initialOrientation = 'vertical',
+  initial = 0,
+}: UseClipperOptions) {
   if (!world?.components || !world?.world || !world?.container) {
     throw new Error('[useClipper] Передайте { components, world, container } из useWorld().')
   }
@@ -49,6 +53,8 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
   let enabled = false
   let currentY: number | null = null
   let currentX: number | null = null
+
+  let orientation: 'vertical' | 'horizontal' = initialOrientation
 
   async function createPlaneAt(value: number) {
     if (orientation === 'vertical') {
@@ -107,6 +113,22 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     }
   }
 
+  async function setOrientation(next: 'vertical' | 'horizontal') {
+    if (next === orientation) return
+    clipper.deleteAll()
+    orientation = next
+    currentX = null
+    currentY = null
+    if (enabled) {
+      clipper.enabled = true
+      await createPlaneAt(initial)
+      if (orientation === 'vertical') currentX = initial
+      else currentY = initial
+    } else {
+      clipper.enabled = false
+    }
+  }
+
   return {
     get enabled() {
       return enabled
@@ -120,15 +142,18 @@ export function useClipper({ world, orientation = 'vertical', initial = 0 }: Use
     get obcClipper() {
       return clipper
     },
+    get orientation() {
+      return orientation
+    },
 
     enable,
     disable,
     clear,
     toggle,
+    setOrientation,
     setSingleVerticalCutAtX,
     setSingleHorizontalCutAtY,
   }
 }
 
 export type UseClipper = ReturnType<typeof useClipper>
-

@@ -65,7 +65,19 @@ function toggleClipper() {
   clipper.value?.toggle()
 }
 
-defineExpose({ loadModel, clear, toggleClipper })
+function isClipperEnabled() {
+  return clipper.value?.enabled ?? false
+}
+
+async function setClipperOrientation(orientation: 'horizontal' | 'vertical') {
+  await clipper.value?.setOrientation?.(orientation)
+}
+
+function getClipperOrientation() {
+  return clipper.value?.orientation ?? 'horizontal'
+}
+
+defineExpose({ loadModel, clear, toggleClipper, isClipperEnabled, setClipperOrientation, getClipperOrientation })
 
 onMounted(async () => {
   if (!viewerRef.value) return

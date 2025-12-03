@@ -6,6 +6,7 @@ import type { World } from '@thatopen/components'
 import MeasurePanel from '@/components/UI/MeasurePanel.vue'
 import SvgIcons from '@/components/Svg/SvgIcons.vue'
 import UploadModelButton from '@/components/UI/UploadModelButton.vue'
+import ClipperPanel from '@/components/UI/ClipperPanel.vue'
 import { useAreaMeasurement } from '@/composables/measure/useAreaMeasurement'
 import { useLengthMeasurement } from '@/composables/measure/useLengthMeasurement'
 import { useMeasurementRouter } from '@/composables/measure/useMeasurementRouter'
@@ -26,6 +27,9 @@ const props = defineProps<{
 
 // ===== Видимость панелей
 const panels = ref({ square: false, linear: false })
+const clipperPanelVisible = ref(false)
+const clipperEnabled = ref(false)
+const clipperOrientation = ref<'horizontal' | 'vertical'>('horizontal')
 
 // ===== Доступ к deps через computed
 const componentsRef = computed(() => props.viewerContext?.components ?? null)
@@ -95,8 +99,41 @@ async function handleFile(file: File) {
   await viewer.loadModel(file).catch(console.error)
 }
 
-function toggleClipper() {
-  props.viewerRef?.toggleClipper?.()
+function toggleClipperPanel() {
+  clipperPanelVisible.value = !clipperPanelVisible.value
+}
+
+function setClipperEnabled(value: boolean) {
+  const viewer = props.viewerRef
+  if (!viewer) return
+  if (value === clipperEnabled.value) return
+  try {
+    viewer.toggleClipper?.()
+    clipperEnabled.value = value
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+watch(
+  () => props.viewerRef,
+  (viewer) => {
+    clipperEnabled.value = viewer?.isClipperEnabled?.() ?? clipperEnabled.value
+    clipperOrientation.value = viewer?.getClipperOrientation?.() ?? clipperOrientation.value
+  },
+  { immediate: true },
+)
+
+async function setClipperOrientation(value: 'horizontal' | 'vertical') {
+  const viewer = props.viewerRef
+  if (!viewer) return
+  if (value === clipperOrientation.value) return
+  try {
+    await viewer.setClipperOrientation?.(value)
+    clipperOrientation.value = value
+  } catch (err) {
+    console.error(err)
+  }
 }
 
 // Реакция на открытие/закрытие панелей: активируем тул и роутер
@@ -129,6 +166,15 @@ watch(
     }
   },
 )
+
+watch(
+  () => clipperPanelVisible.value,
+  (visible) => {
+    if (!visible) return
+    clipperEnabled.value = props.viewerRef?.isClipperEnabled?.() ?? clipperEnabled.value
+    clipperOrientation.value = props.viewerRef?.getClipperOrientation?.() ?? clipperOrientation.value
+  },
+)
 </script>
 
 <template>
@@ -137,23 +183,32 @@ watch(
       <UploadModelButton @file-selected="handleFile" />
 
       <div class="toolbar__icons">
+        <button class="toolbar__icon" type="button" @click="toggleClipperPanel">
+          <SvgIcons icon="section-view" />
+        </button>
         <button class="toolbar__icon" type="button" @click="togglePannel('square')">
           <SvgIcons icon="square-measurement" />
         </button>
         <button class="toolbar__icon" type="button" @click="togglePannel('linear')">
           <SvgIcons icon="linear-measurement" />
         </button>
-        <button class="toolbar__icon" type="button" @click="toggleClipper">
-          <SvgIcons icon="section-view" />
-        </button>
       </div>
     </div>
+
+    <ClipperPanel
+      v-if="clipperPanelVisible"
+      :enabled="clipperEnabled"
+      :orientation="clipperOrientation"
+      :top="60"
+      @toggle:enabled="setClipperEnabled"
+      @change:orientation="setClipperOrientation"
+    />
 
     <MeasurePanel
       v-if="panels.square && depsReady"
       :state="area.state"
       variant="area"
-      :top="60"
+      :top="130"
       @toggle:enabled="(v: boolean) => activateAreaSafe(v)"
       @toggle:visible="(v: boolean) => updateAreaOptionsSafe({ visible: v })"
       @change:color="(v: string) => updateAreaOptionsSafe({ color: v })"
@@ -169,7 +224,7 @@ watch(
       v-if="panels.linear && depsReady"
       :state="length.state"
       variant="length"
-      :top="230"
+      :top="300"
       @toggle:enabled="(v: boolean) => activateLengthSafe(v)"
       @toggle:visible="(v: boolean) => updateLengthOptionsSafe({ visible: v })"
       @change:color="(v: string) => updateLengthOptionsSafe({ color: v })"
