@@ -10,6 +10,7 @@ import { useIfcLoader } from '@/composables/useIfcLoader'
 import { useBackground } from '@/composables/useBackground'
 import { useViewerFPS } from '@/composables/FPS/useViewerFPS'
 import { useClipper, type UseClipper } from '@/composables/clipper/useClipper'
+import { useClipStyler } from '@/composables/clipper/useClipStyler'
 
 interface Props {
   config: ModelViewerConfig
@@ -22,7 +23,10 @@ interface Props {
 const props = defineProps<Props>()
 
 interface Emits {
-  (e: 'ready', v: { components: any; world: any; container: HTMLElement; fragmentsReady: Promise<unknown> | null }): void
+  (
+    e: 'ready',
+    v: { components: any; world: any; container: HTMLElement; fragmentsReady: Promise<unknown> | null },
+  ): void
 }
 
 const emit = defineEmits<Emits>()
@@ -41,6 +45,7 @@ let disposeWorld: (() => void) | undefined
 let disposeGrid: (() => void) | undefined
 let disposeStats: (() => void) | undefined
 let disposeFragments: (() => void) | undefined
+let disposeClipStyler: (() => void) | null = null
 let ifc: ReturnType<typeof useIfcLoader> | undefined
 let fragmentsReady: Promise<unknown> | null = null
 
@@ -114,6 +119,15 @@ onMounted(async () => {
     fragmentsReady,
   })
 
+  // ClipStyler
+  clipper.value.obcClipper.visible = true
+  const clipStyler = useClipStyler({
+    components: components.value!,
+    world: world.value!,
+    clipper: clipper.value.obcClipper,
+  })
+  disposeClipStyler = clipStyler.dispose
+
   // Инициализируем камеру (если есть lookAt)
   cam = useCamera(components.value!, world.value!)
   if (config.value.lookAt) {
@@ -161,6 +175,9 @@ onBeforeUnmount(() => {
   } catch {}
   try {
     disposeGrid?.()
+  } catch {}
+  try {
+    disposeClipStyler?.()
   } catch {}
   try {
     disposeWorld?.()
