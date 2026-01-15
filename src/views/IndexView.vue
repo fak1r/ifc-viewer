@@ -5,10 +5,8 @@ import ModelWorkspace from '@/components/ModelWorkspace.vue'
 import type { ModelViewerConfig } from '@/types/ifc-viewer'
 import LoadProgressBar from '@/components/UI/LoadProgressBar.vue'
 
-const base = import.meta.env.BASE_URL || '/'
-
 const config: ModelViewerConfig = {
-  model: `${location.origin}${base}house-model.ifc`,
+  model: `${import.meta.env.BASE_URL}/house-model.ifc`,
   showGrid: true,
   background: '#0e0111',
 }

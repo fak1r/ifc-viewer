@@ -3,4 +3,16 @@ import './style.css'
 import App from './App.vue'
 import { router } from './router'
 
-createApp(App).use(router).mount('#app')
+async function init(): Promise<void> {
+  const app = createApp(App)
+
+  app.use(router)
+
+  router.isReady().then(() => {
+    app.mount('#app')
+  })
+}
+
+init().catch((e) => {
+  console.error(e)
+})

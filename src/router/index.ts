@@ -1,13 +1,20 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import ModelPage from '@/pages/ModelPage.vue'
+import IndexView from '@/views/IndexView.vue'
 
 const routes: RouteRecordRaw[] = [
-  { path: '/model', name: 'Model', component: ModelPage },
-  { path: '/:pathMatch(.*)*', redirect: '/model' },
+  {
+    path: '/',
+    name: 'Index',
+    component: IndexView
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/404'
+  },
 ]
 
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
