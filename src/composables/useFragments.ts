@@ -4,8 +4,7 @@ export function useFragments(components: OBC.Components, world: OBC.World) {
   const fragments = components.get(OBC.FragmentsManager)
 
   // Путь до воркера из /public (файл должен лежать: /public/worker.mjs)
-  const BASE = import.meta.env.BASE_URL || '/'
-  const WORKER_URL = `${location.origin}${BASE}worker.mjs`
+  const WORKER_URL = `${import.meta.env.BASE_URL}/worker.js`
 
   async function init() {
     await fragments.init(WORKER_URL)
