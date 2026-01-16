@@ -10,10 +10,6 @@ type Options = {
   styleName?: string
 }
 
-/**
- * Connects ClipStyler to the Clipper so every clipping plane gets styled.
- * Adds a simple black outline/fill style and keeps the line material resolution in sync.
- */
 export function useClipStyler({ components, world, clipper, styleName = 'default' }: Options) {
   const styler = components.get(FrontClipStyler)
   styler.world = world
@@ -22,8 +18,6 @@ export function useClipStyler({ components, world, clipper, styleName = 'default
 
   const resolveResolution = () => {
     const size = new THREE.Vector2()
-    // PostproductionRenderer exposes underlying renderer as `three`
-    // Fallback to window size if unavailable
     const renderer: any = (world as any).renderer?.three
     if (renderer?.getSize) {
       renderer.getSize(size)
@@ -71,7 +65,6 @@ export function useClipStyler({ components, world, clipper, styleName = 'default
     }
   }
 
-  // Style already existing planes
   clipper.list.forEach((_, id) => applyStyleToPlane(id))
 
   const onPlaneCreated = ({ key }: { key: string }) => applyStyleToPlane(key)
@@ -115,3 +108,4 @@ export function useClipStyler({ components, world, clipper, styleName = 'default
     },
   }
 }
+

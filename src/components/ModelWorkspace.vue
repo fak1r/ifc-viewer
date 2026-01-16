@@ -26,23 +26,22 @@ const props = defineProps<{
   viewerRef: ViewerInstance | null
 }>()
 
-// ===== Видимость панелей
+// Видимость панелей
 const panels = ref({ square: false, linear: false })
 const clipperPanelVisible = ref(false)
 const clipperEnabled = ref(false)
 const clipperOrientation = ref<'horizontal' | 'vertical'>('horizontal')
 
-// ===== Доступ к deps через computed
 const componentsRef = computed(() => props.viewerContext?.components ?? null)
 const worldRef = computed(() => props.viewerContext?.world ?? null)
 const containerRef = computed<HTMLElement | null>(() => props.viewerContext?.container ?? null)
 const depsReady = computed(() => !!componentsRef.value && !!worldRef.value && !!containerRef.value)
 
-// ===== Измерители
+// Измерители
 const area = useAreaMeasurement({ components: componentsRef, world: worldRef })
 const length = useLengthMeasurement({ components: componentsRef, world: worldRef })
 
-// ===== Router: вяжем жесты/клавиши к контейнеру вьювера
+// Router: вяжем жесты/клавиши к контейнеру вьювера
 const router = useMeasurementRouter({
   container: containerRef,
   tools: {
@@ -61,7 +60,7 @@ const router = useMeasurementRouter({
   },
 })
 
-// ===== Безопасные обёртки (не трогаем тул до готовности deps)
+// Безопасные обёртки (не трогаем тул до готовности deps)
 function ensureAreaReady() {
   if (!depsReady.value) return false
   if (!area.state.ready) area.setupMeasurement?.()
@@ -264,3 +263,4 @@ watch(
   background: rgba(255, 255, 255, 0.1);
 }
 </style>
+
